@@ -191,14 +191,17 @@ html += `     <div class="card row">       <span>${m}</span>       <b>₹${membe
 });
 
 // 🔹 Monthly Grid Table
-html += `<div class="card" style="overflow-x:auto"> <b>${year} Breakdown</b><br><br>
+html += `
 
-  <table border="0" style="width:100%; font-size:12px; text-align:center;">
-    <tr>
-      <th>Member</th>
-      ${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}
-      <th>Total</th>
-    </tr>`;
+  <div class="card" style="overflow-x:auto">
+    <b>${year} Breakdown</b><br><br>
+    <table style="width:100%; font-size:12px; text-align:center;">
+      <tr>
+        <th>Member</th>
+        ${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}
+        <th>Total</th>
+      </tr>
+  `;
 
 members.forEach(name=>{
 let rowTotal = 0;
