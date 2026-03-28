@@ -76,7 +76,7 @@ td, th { padding:6px; }
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 //import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-  import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -134,7 +134,7 @@ function renderMonthly(data){
 
     const amount = entry ? entry.amount : 0;
     const paid = entry ? entry.paid : false;
-    const id = entry ? entry.id : null;
+    const id = entry ? entry.id : "";
 
     total += amount;
 
@@ -223,19 +223,12 @@ window.updateAmount = async function(id, name, val){
 const month = getMonth();
 const year = getYear();
 
-const snapshot = await getDocs(collection(db,"fund"));
-
-const existing = snapshot.docs.find(d =>
-d.data().name === name &&
-d.data().month === month &&
-d.data().year === year
-);
-
-if(existing){
-await updateDoc(doc(db,"fund", existing.id), {
+if(id){
+await updateDoc(doc(db,"fund",id), {
 amount: Number(val)
 });
 } else {
+// create once, then UI will refresh with id
 await addDoc(collection(db,"fund"), {
 name,
 month,
@@ -247,25 +240,20 @@ paid: false
 };
 
 
+
 // ✔ TOGGLE (FIXED)
 window.toggle = async function(id, current, name){
 
 const month = getMonth();
 const year = getYear();
 
-const snapshot = await getDocs(collection(db,"fund"));
-
-const existing = snapshot.docs.find(d =>
-d.data().name === name &&
-d.data().month === month &&
-d.data().year === year
-);
-
-if(existing){
-await updateDoc(doc(db,"fund", existing.id), {
-paid: !existing.data().paid
+if(id){
+// ✅ update existing ONLY
+await updateDoc(doc(db,"fund",id), {
+paid: !current
 });
 } else {
+// ✅ create new record ONCE
 await addDoc(collection(db,"fund"), {
 name,
 month,
@@ -275,6 +263,7 @@ paid: true
 });
 }
 };
+
 
 
 // 💬
