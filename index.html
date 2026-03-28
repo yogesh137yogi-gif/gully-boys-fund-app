@@ -36,102 +36,49 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 </div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import {
-getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs
+import { 
+  getFirestore, collection, onSnapshot, updateDoc, doc, addDoc 
 } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-
-const OWNER_EMAIL = "yogesh137.yogi@gmail.com";
- const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const auth = getAuth(app);
-
-let isOwner = false;
-
-onAuthStateChanged(auth, user => {
-if(user && user.email === OWNER_EMAIL){
-isOwner = true;
-}
-});
-
-//import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-//import { addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-//import { addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
   authDomain: "gully-boys-fund.firebaseapp.com",
   projectId: "gully-boys-fund"
 };
-  const monthsList = [
+
+// ✅ Correct order
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// 🔐 Owner check
+const OWNER_EMAIL = "yogesh137.yogi@gmail.com";
+let isOwner = false;
+
+onAuthStateChanged(auth, user => {
+  if(user && user.email === OWNER_EMAIL){
+    isOwner = true;
+  }
+});
+
+// 📅 Month logic
+const monthsList = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December"
 ];
-/*window.createMonth = async function(){
-
-const month = getMonth();
-const year = getYear();
-
-const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
-
-// 🔒 Disable button to prevent multiple clicks
-//document.getElementById("monthlyPage").innerHTML =     <div class="card">Creating month... please wait</div>;
-  document.getElementById("monthlyPage").innerHTML = `
-
-  <div class="card">Creating month... please wait</div>
-`;
-
-// 🔍 Double check if already exists
-const snapshot = await getDocs(collection(db,"fund"));
-
-const exists = snapshot.docs.some(d =>
-d.data().month === month && d.data().year === year
-);
-
-if(exists){
-alert("Month already exists!");
-location.reload();
-return;
-}
-
-// ✅ Add all members properly
-const promises = members.map(name =>
-addDoc(collection(db,"fund"), {
-name,
-month,
-year,
-amount: 0,
-paid: false
-})
-);
-
-await Promise.all(promises);
-
-alert("Month created successfully!");
-
-location.reload(); // 🔥 clean refresh
-};*/
-
 
 window.changeMonth = function(step){
   let month = localStorage.getItem("month") || "March";
   let year = Number(localStorage.getItem("year")) || 2026;
 
   let index = monthsList.indexOf(month);
-
   index += step;
 
-  if(index < 0){
-    index = 11;
-    year--;
-  }
-
-  if(index > 11){
-    index = 0;
-    year++;
-  }
+  if(index < 0){ index = 11; year--; }
+  if(index > 11){ index = 0; year++; }
 
   localStorage.setItem("month", monthsList[index]);
   localStorage.setItem("year", year);
@@ -139,194 +86,117 @@ window.changeMonth = function(step){
   location.reload();
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+function getMonth(){ return localStorage.getItem("month") || "March"; }
+function getYear(){ return Number(localStorage.getItem("year")) || 2026; }
 
-window.showPage = function(p){
-  document.getElementById("monthlyPage").style.display = p==="monthly"?"block":"none";
-  document.getElementById("summaryPage").style.display = p==="summary"?"block":"none";
-};
-
-function getMonth(){
-  return localStorage.getItem("month") || "March";
-}
-function getYear(){
-  return Number(localStorage.getItem("year")) || 2026;
-}
-
+// 📅 Monthly UI
 function renderMonthly(data){
-const div = document.getElementById("monthlyPage");
-div.innerHTML = "";
+  const div = document.getElementById("monthlyPage");
+  div.innerHTML = "";
 
-const month = getMonth();
-const year = getYear();
+  const month = getMonth();
+  const year = getYear();
 
-document.getElementById("monthDisplay").innerText = month + " " + year;
+  document.getElementById("monthDisplay").innerText = month + " " + year;
 
-const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+  const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+  let total = 0;
 
-let total = 0;
+  members.forEach(name => {
 
-members.forEach(name => {
-// 🔍 find existing record
-const entry = data.find(d =>
-  d.name === name &&
-  d.month === month &&
-  d.year === year
-);
+    const entry = data.find(d =>
+      d.name === name && d.month === month && d.year === year
+    );
 
-const amount = entry ? entry.amount : 0;
-const paid = entry ? entry.paid : false;
-const id = entry ? entry.id : null;
+    const amount = entry ? entry.amount : 0;
+    const paid = entry ? entry.paid : false;
+    const id = entry ? entry.id : null;
 
-total += amount;
+    total += amount;
 
-div.innerHTML += `
-<div class="card">
-  <div class="row">
-    <b>${name}</b>
-    ${isOwner ? `<span onclick="toggle('${id}', ${paid}, '${name}')">${paid ? "✔":"❌"}</span>` : ""}
-  </div>
+    div.innerHTML += `
+    <div class="card">
+      <div class="row">
+        <b>${name}</b>
+        ${isOwner ? `<span onclick="toggle('${id}', ${paid}, '${name}')">${paid ? "✔":"❌"}</span>` : ""}
+      </div>
 
-  <div class="row">
-    ₹ <input class="input" value="${amount}" 
-${!isOwner ? "disabled" : ""}
-onchange="updateAmount('${id}','${name}', this.value)">
-    ${!paid ? `<span onclick="whatsapp('${name}', ${amount})">💬</span>` : ""}
-  </div>
-</div>`;
+      <div class="row">
+        ₹ <input class="input" value="${amount}" 
+        ${!isOwner ? "disabled" : ""}
+        onchange="updateAmount('${id}','${name}', this.value)">
+        ${!paid ? `<span onclick="whatsapp('${name}', ${amount})">💬</span>` : ""}
+      </div>
+    </div>`;
+  });
 
-});
-
-div.innerHTML = `
-
+  div.innerHTML = `
   <div class="card">
     <b>${month} ${year}</b><br>
     Collected: ₹${total}
   </div>` + div.innerHTML;
 }
 
-
+// 📊 Summary
 function renderSummary(data){
   const div = document.getElementById("summaryPage");
-
   const year = getYear();
 
-  const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
   let total = 0;
-  let memberTotals = {};
 
   data.forEach(d=>{
     if(d.year === year && d.paid){
       total += d.amount || 0;
-      memberTotals[d.name] = (memberTotals[d.name] || 0) + d.amount;
     }
   });
 
-  let html = `
+  div.innerHTML = `
   <div class="card">
-    <b>Total Fund Collected (${year})</b>
+    <b>Total Collected (${year})</b>
     <h3>₹${total}</h3>
-    <div class="progress">
-      <div class="bar" style="width:${(total/16800)*100}%"></div>
-    </div>
-  </div>
-  `;
-
-  members.forEach(m=>{
-    html += `<div class="card row"><span>${m}</span><b>₹${memberTotals[m] || 0}</b></div>`;
-  });
-
-  html += `
-  <div class="card" style="overflow-x:auto">
-  <b>${year} Breakdown</b><br><br>
-  <table style="width:100%; font-size:12px; text-align:center;">
-  <tr><th>Member</th>${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}<th>Total</th></tr>
-  `;
-
-  members.forEach(name=>{
-    let rowTotal = 0;
-    html += `<tr><td><b>${name}</b></td>`;
-
-    months.forEach(month=>{
-      const entry = data.find(d=>d.name===name && d.month===month && d.year===year);
-      const amount = entry ? (entry.amount || 0) : 0;
-      const paid = entry ? entry.paid : false;
-
-      rowTotal += amount;
-
-      html += `<td><div style="background:${paid?'#c8f7c5':'#eee'};border-radius:50%;padding:4px;">${amount||'-'}</div></td>`;
-    });
-
-    html += `<td><b>₹${rowTotal}</b></td></tr>`;
-  });
-
-  html += `</table></div>`;
-
-  div.innerHTML = html;
+  </div>`;
 }
 
+// 🔄 Live data
 onSnapshot(collection(db,"fund"), snap=>{
   const data = snap.docs.map(d=>({id:d.id,...d.data()}));
   renderMonthly(data);
   renderSummary(data);
 });
 
+// ✏️ Update amount
 window.updateAmount = async function(id, name, val){
+  const month = getMonth();
+  const year = getYear();
 
-const month = getMonth();
-const year = getYear();
-
-// if record exists → update
-if(id){
-await updateDoc(doc(db,"fund",id), {
-amount: Number(val)
-});
-}
-else{
-// if not exists → create new
-await addDoc(collection(db,"fund"), {
-name,
-month,
-year,
-amount: Number(val),
-paid: false
-});
-}
+  if(id){
+    await updateDoc(doc(db,"fund",id), { amount: Number(val) });
+  } else {
+    await addDoc(collection(db,"fund"), {
+      name, month, year, amount:Number(val), paid:false
+    });
+  }
 };
 
-
+// ✔ Toggle paid
 window.toggle = async function(id, current, name){
+  const month = getMonth();
+  const year = getYear();
 
-const month = getMonth();
-const year = getYear();
-
-if(id){
-await updateDoc(doc(db,"fund",id), {
-paid: !current
-});
-} else {
-await addDoc(collection(db,"fund"), {
-name,
-month,
-year,
-amount: 0,
-paid: true
-});
-}
+  if(id){
+    await updateDoc(doc(db,"fund",id), { paid: !current });
+  } else {
+    await addDoc(collection(db,"fund"), {
+      name, month, year, amount:0, paid:true
+    });
+  }
 };
 
-
-
+// 💬 WhatsApp
 window.whatsapp = (name, amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
 };
 
-window.exportData = ()=>{
-  alert("Export coming next upgrade 🚀");
-};
 </script>
 
 </body>
