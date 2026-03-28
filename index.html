@@ -5,224 +5,198 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gully Boys Fund</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
-body { font-family: Arial; padding: 15px; background:#f5f5f5;}
+body {
+  font-family: Arial;
+  background:#f5f6f8;
+  padding:15px;
+}
+
 h2 { text-align:center; }
-.card { background:white; padding:10px; margin:10px 0; border-radius:10px; }
-input { padding:5px; width:80px; }
-button { padding:5px 10px; margin-top:5px; }
-.topbar { display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; }
-canvas { background:white; border-radius:10px; margin-top:10px; }
+
+.container { max-width:500px; margin:auto; }
+
+.card {
+  background:white;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.progress {
+  height:6px;
+  background:#eee;
+  border-radius:10px;
+  margin-top:8px;
+}
+
+.progress-bar {
+  height:6px;
+  background:#4CAF50;
+  border-radius:10px;
+}
+
+.member {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.circle {
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  background:#e0f2f1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+}
+
+.table {
+  overflow-x:auto;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+td, th {
+  text-align:center;
+  padding:5px;
+  font-size:12px;
+}
+
+.paid { background:#c8f7c5; border-radius:50%; padding:5px;}
+.unpaid { background:#eee; border-radius:50%; padding:5px;}
 </style>
 
 </head>
 
 <body>
 
-<div class="topbar">
-  <h2>Gully Boys Fund</h2>
+<div class="container">
 
-  <div>
-    <select id="monthSelect">
-      <option>January</option><option>February</option><option>March</option>
-      <option>April</option><option>May</option><option>June</option>
-      <option>July</option><option>August</option><option>September</option>
-      <option>October</option><option>November</option><option>December</option>
-    </select>
+<h2>Yearly Summary</h2>
 
-```
-<input id="yearInput" type="number" value="2026" style="width:80px">
-<button onclick="createMonth()">➕ Create</button>
-```
+<div class="card row">
+  <button onclick="changeYear(-1)">⬅</button>
+  <b id="yearDisplay">2026</b>
+  <button onclick="changeYear(1)">➡</button>
+</div>
 
+<div class="card">
+  <div>Total Collected</div>
+  <h3 id="totalYear">₹0</h3>
+  <div class="progress">
+    <div id="progressBar" class="progress-bar" style="width:0%"></div>
   </div>
 </div>
 
-<br>
+<div id="members"></div>
 
-<div>
-  <select id="viewMonth"></select>
-  <input id="viewYear" type="number" value="2026" style="width:80px">
-  <button onclick="loadMonth()">View</button>
+<div class="card table">
+  <b>Monthly Breakdown</b>
+  <table id="table"></table>
 </div>
 
-<br>
-
-<canvas id="monthlyChart"></canvas> <canvas id="yearlyChart"></canvas>
-
-<br>
-
-<div id="loginDiv">
-  <input id="email" placeholder="Email"><br><br>
-  <input id="password" type="password" placeholder="Password"><br><br>
-  <button onclick="login()">Login (Owner)</button>
 </div>
-
-<div id="app"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
   authDomain: "gully-boys-fund.firebaseapp.com",
   projectId: "gully-boys-fund",
-  storageBucket: "gully-boys-fund.firebasestorage.app",
-  messagingSenderId: "311493460566",
-  appId: "1:311493460566:web:0c27b0faad80277568b1f7"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+let selectedYear = 2026;
+const membersList = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-let monthlyChart, yearlyChart;
+window.changeYear = function(val){
+  selectedYear += val;
+  render(window.allData);
+};
 
-function getCurrentMonth() {
-  return new Date().toLocaleString('default', { month: 'long' });
-}
-function getCurrentYear() {
-  return new Date().getFullYear();
-}
+function render(data){
+  if(!data) return;
 
-window.createMonth = async function() {
-  const month = document.getElementById("monthSelect").value;
-  const year = Number(document.getElementById("yearInput").value);
+  const yearData = data.filter(d => d.year == selectedYear);
 
-  const snapshot = await getDocs(collection(db, "fund"));
-  const exists = snapshot.docs.some(d =>
-    d.data().month === month && d.data().year === year
-  );
+  let total = 0;
+  let memberTotals = {};
 
-  if (exists) {
-    alert("Month already exists!");
-    return;
-  }
+  yearData.forEach(d=>{
+    if(d.paid){
+      total += d.amount || 0;
+      memberTotals[d.name] = (memberTotals[d.name] || 0) + d.amount;
+    }
+  });
 
-  for (let name of members) {
-    await addDoc(collection(db, "fund"), {
-      name, month, year, amount: 0, paid: false
+  document.getElementById("yearDisplay").innerText = selectedYear;
+  document.getElementById("totalYear").innerText = "₹" + total;
+
+  let percent = (total / 16800) * 100;
+  document.getElementById("progressBar").style.width = percent + "%";
+
+  // Members
+  let html="";
+  membersList.forEach(m=>{
+    html += `
+    <div class="card member">
+      <div class="row">
+        <div class="circle">${m[0]}</div>
+        <div style="margin-left:10px">${m}</div>
+      </div>
+      <div>₹${memberTotals[m] || 0}</div>
+    </div>`;
+  });
+
+  document.getElementById("members").innerHTML = html;
+
+  // Table
+  let table = "<tr><th>Member</th>";
+  months.forEach(m=> table += `<th>${m}</th>`);
+  table += "</tr>";
+
+  membersList.forEach(name=>{
+    table += `<tr><td>${name}</td>`;
+
+    months.forEach((m,i)=>{
+      const fullMonth = new Date(2026,i).toLocaleString('default',{month:'long'});
+      const found = yearData.find(d=> d.name===name && d.month===fullMonth);
+
+      table += `<td>
+        <span class="${found && found.paid ? 'paid':'unpaid'}">
+          ${found ? found.amount : '-'}
+        </span>
+      </td>`;
     });
-  }
 
-  alert(month + " " + year + " created!");
-};
-
-window.loadMonth = function() {
-  const m = document.getElementById("viewMonth").value;
-  const y = Number(document.getElementById("viewYear").value);
-
-  localStorage.setItem("month", m);
-  localStorage.setItem("year", y);
-
-  location.reload();
-};
-
-const appDiv = document.getElementById("app");
-
-function render(data, isOwner) {
-  appDiv.innerHTML = "";
-
-  const month = localStorage.getItem("month") || getCurrentMonth();
-  const year = Number(localStorage.getItem("year")) || getCurrentYear();
-
-  const filtered = data.filter(d => d.month === month && d.year === year);
-
-  // 📊 Monthly chart
-  const names = filtered.map(m => m.name);
-  const amounts = filtered.map(m => m.amount || 0);
-
-  if(monthlyChart) monthlyChart.destroy();
-  monthlyChart = new Chart(document.getElementById("monthlyChart"), {
-    type: "bar",
-    data: {
-      labels: names,
-      datasets: [{ label: "Monthly", data: amounts }]
-    }
+    table += "</tr>";
   });
 
-  // 📊 Yearly totals
-  let yearlyTotals = {};
-  data.forEach(d => {
-    if(d.year === year){
-      yearlyTotals[d.name] = (yearlyTotals[d.name] || 0) + (d.amount || 0);
-    }
-  });
-
-  if(yearlyChart) yearlyChart.destroy();
-  yearlyChart = new Chart(document.getElementById("yearlyChart"), {
-    type: "pie",
-    data: {
-      labels: Object.keys(yearlyTotals),
-      datasets: [{ data: Object.values(yearlyTotals) }]
-    }
-  });
-
-  // Cards
-  filtered.forEach(member => {
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <b>${member.name}</b><br>
-      Month: ${member.month} ${member.year}<br><br>
-
-      Amount: 
-      ${isOwner ? `<input value="${member.amount}" onchange="updateAmount('${member.id}', this.value)">` : member.amount}
-      <br><br>
-
-      Status: ${member.paid ? "Paid" : "Unpaid"}<br>
-
-      ${isOwner ? `<button onclick="toggle('${member.id}', ${member.paid})">
-        Mark ${member.paid ? "Unpaid" : "Paid"}
-      </button>` : ""}
-    `;
-
-    appDiv.appendChild(div);
-  });
+  document.getElementById("table").innerHTML = table;
 }
 
-onSnapshot(collection(db, "fund"), (snap) => {
-  const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
-  render(data, window.isOwner || false);
-
-  const months = [...new Set(data.map(d => d.month))];
-  document.getElementById("viewMonth").innerHTML =
-    months.map(m => `<option>${m}</option>`).join("");
+onSnapshot(collection(db,"fund"), snap=>{
+  window.allData = snap.docs.map(d=>d.data());
+  render(window.allData);
 });
-
-window.login = function() {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("password").value;
-
-  signInWithEmailAndPassword(auth, email, pass)
-    .catch(() => alert("Login failed"));
-};
-
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    window.isOwner = true;
-    document.getElementById("loginDiv").style.display = "none";
-  } else {
-    window.isOwner = false;
-  }
-});
-
-window.toggle = async function(id, current){
-  const ref = doc(db, "fund", id);
-  await updateDoc(ref, { paid: !current });
-};
-
-window.updateAmount = async function(id, value){
-  const ref = doc(db, "fund", id);
-  await updateDoc(ref, { amount: Number(value) });
-};
 </script>
 
 </body>
