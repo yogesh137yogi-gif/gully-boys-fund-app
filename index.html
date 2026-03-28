@@ -169,10 +169,19 @@ const year = Number(localStorage.getItem("year")) || getCurrentYear();
   });
 
   summaryDiv.innerHTML = `
-    <b>Total Collected (${month}):</b> ₹${total}<br><br>
-    <b>Member Totals:</b><br>
-    ${Object.entries(memberTotals).map(([n,a]) => `${n}: ₹${a}`).join("<br>")}
-  `;
+  <h3>📊 Dashboard (${month} ${year})</h3>
+  <b>Total Collected:</b> ₹${total}<br><br>
+
+  <b>Member Summary:</b><br>
+  ${filtered.map(m => `
+    ${m.name} → ₹${m.amount} (${m.paid ? "✅ Paid" : "❌ Unpaid"})
+  `).join("<br>")}
+
+  <br><br>
+
+  <b>All-Time Totals:</b><br>
+  ${Object.entries(memberTotals).map(([n,a]) => `${n}: ₹${a}`).join("<br>")}
+`;
 }
 
 onSnapshot(collection(db, "fund"), (snap) => {
