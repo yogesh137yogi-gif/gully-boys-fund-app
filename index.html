@@ -113,10 +113,12 @@ window.createMonth = async function() {
 };
 
 window.loadMonth = function() {
-  window.selectedMonth = document.getElementById("viewMonth").value;
-  window.selectedYear = Number(document.getElementById("viewYear").value);
+  const m = document.getElementById("viewMonth").value;
+  const y = Number(document.getElementById("viewYear").value);
 
-  // force UI refresh
+  localStorage.setItem("month", m);
+  localStorage.setItem("year", y);
+
   location.reload();
 };
 
@@ -129,9 +131,8 @@ function render(data, isOwner) {
   let total = 0;
   let memberTotals = {};
 
-  const month = window.selectedMonth || getCurrentMonth();
-  const year = window.selectedYear || getCurrentYear();
-
+  const month = localStorage.getItem("month") || getCurrentMonth();
+const year = Number(localStorage.getItem("year")) || getCurrentYear();
   const filtered = data.filter(d => d.month === month && d.year === year);
 
   filtered.forEach(member => {
@@ -177,6 +178,8 @@ function render(data, isOwner) {
 onSnapshot(collection(db, "fund"), (snap) => {
   const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
   render(data, window.isOwner || false);
+  document.getElementById("viewMonth").value = localStorage.getItem("month") || getCurrentMonth();
+document.getElementById("viewYear").value = localStorage.getItem("year") || getCurrentYear();
 
   // populate dropdown
   const months = [...new Set(data.map(d => d.month))];
