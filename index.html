@@ -153,32 +153,91 @@ function renderMonthly(data){
 }
 
 function renderSummary(data){
-  const div = document.getElementById("summaryPage");
+const div = document.getElementById("summaryPage");
 
-  let total = 0;
-  let memberTotals = {};
+const year = getYear();
 
-  data.forEach(d=>{
-    if(d.paid){
-      total += d.amount || 0;
-      memberTotals[d.name] = (memberTotals[d.name]||0) + d.amount;
-    }
-  });
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+const months = [
+"January","February","March","April","May","June",
+"July","August","September","October","November","December"
+];
 
-  let html = `
+let total = 0;
+let memberTotals = {};
+
+data.forEach(d=>{
+if(d.year === year && d.paid){
+total += d.amount || 0;
+memberTotals[d.name] = (memberTotals[d.name] || 0) + d.amount;
+}
+});
+
+// 🔹 Top Summary Card
+let html = `
+
   <div class="card">
-    <b>Total Fund Collected</b>
+    <b>Total Fund Collected (${year})</b>
     <h3>₹${total}</h3>
     <div class="progress">
       <div class="bar" style="width:${(total/16800)*100}%"></div>
     </div>
-  </div>`;
+  </div>
+  `;
 
-  Object.keys(memberTotals).forEach(n=>{
-    html += `<div class="card row"><span>${n}</span><b>₹${memberTotals[n]}</b></div>`;
-  });
+// 🔹 Member totals
+members.forEach(m=>{
+html += `     <div class="card row">       <span>${m}</span>       <b>₹${memberTotals[m] || 0}</b>     </div>`;
+});
 
-  div.innerHTML = html;
+// 🔹 Monthly Grid Table
+html += `<div class="card" style="overflow-x:auto"> <b>${year} Breakdown</b><br><br>
+
+  <table border="0" style="width:100%; font-size:12px; text-align:center;">
+    <tr>
+      <th>Member</th>
+      ${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}
+      <th>Total</th>
+    </tr>`;
+
+members.forEach(name=>{
+let rowTotal = 0;
+
+```
+html += `<tr><td><b>${name}</b></td>`;
+
+months.forEach(month=>{
+  const entry = data.find(d =>
+    d.name === name &&
+    d.month === month &&
+    d.year === year
+  );
+
+  const amount = entry ? (entry.amount || 0) : 0;
+  const paid = entry ? entry.paid : false;
+
+  rowTotal += amount;
+
+  html += `
+  <td>
+    <div style="
+      background:${paid ? '#c8f7c5' : '#eee'};
+      border-radius:50%;
+      padding:4px;
+    ">
+      ${amount || '-'}
+    </div>
+  </td>`;
+});
+
+html += `<td><b>₹${rowTotal}</b></td></tr>`;
+```
+
+});
+
+html += `</table></div>`;
+
+div.innerHTML = html;
 }
 
 onSnapshot(collection(db,"fund"), snap=>{
