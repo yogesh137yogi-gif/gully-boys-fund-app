@@ -10,10 +10,10 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 
 .header {
   padding:15px;
-  font-weight:bold;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  font-weight:bold;
 }
 
 .container { padding:10px; }
@@ -48,8 +48,10 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
   justify-content:space-around;
   padding:10px;
   border-top:1px solid #ddd;
-  z-index:999;
 }
+
+table { width:100%; font-size:12px; text-align:center; }
+td, th { padding:6px; }
 </style>
 
 </head>
@@ -74,7 +76,6 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -84,45 +85,36 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-// 🔐 OWNER CONTROL
-const OWNER_EMAIL = "yogesh137.yogi@gmail.com";
-let isOwner = false;
+// 🔐 TEMP OWNER MODE (STABLE)
+let isOwner = true;
 
-// 📅 MONTH LIST
-const monthsList = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
-];
-
-// 🔄 MONTH CHANGE
-window.changeMonth = function(step){
-  let month = localStorage.getItem("month") || "March";
-  let year = Number(localStorage.getItem("year")) || 2026;
-
-  let index = monthsList.indexOf(month);
-  index += step;
-
-  if(index < 0){ index = 11; year--; }
-  if(index > 11){ index = 0; year++; }
-
-  localStorage.setItem("month", monthsList[index]);
-  localStorage.setItem("year", year);
-
-  location.reload();
-};
+// 📅 MONTHS
+const months = ["January","February","March","April","May","June",
+"July","August","September","October","November","December"];
 
 function getMonth(){ return localStorage.getItem("month") || "March"; }
 function getYear(){ return Number(localStorage.getItem("year")) || 2026; }
 
-// 📄 PAGE SWITCH
+window.changeMonth = function(step){
+  let m = getMonth();
+  let y = getYear();
+  let i = months.indexOf(m) + step;
+
+  if(i < 0){ i=11; y--; }
+  if(i > 11){ i=0; y++; }
+
+  localStorage.setItem("month", months[i]);
+  localStorage.setItem("year", y);
+  location.reload();
+};
+
 window.showPage = function(p){
   document.getElementById("monthlyPage").style.display = p==="monthly"?"block":"none";
   document.getElementById("summaryPage").style.display = p==="summary"?"block":"none";
 };
 
-// 📅 MONTHLY VIEW
+// 🔹 MONTHLY
 function renderMonthly(data){
   const div = document.getElementById("monthlyPage");
   div.innerHTML = "";
@@ -136,13 +128,8 @@ function renderMonthly(data){
 
   let total = 0;
 
-  members.forEach(name => {
-
-    const entry = data.find(d =>
-      d.name === name &&
-      d.month === month &&
-      d.year === year
-    );
+  members.forEach(name=>{
+    const entry = data.find(d=>d.name===name && d.month===month && d.year===year);
 
     const amount = entry ? entry.amount : 0;
     const paid = entry ? entry.paid : false;
@@ -159,7 +146,6 @@ function renderMonthly(data){
 
       <div class="row">
         ₹ <input class="input" value="${amount}" 
-        ${!isOwner ? "disabled" : ""}
         onchange="updateAmount('${id}','${name}', this.value)">
         ${!paid ? `<span onclick="whatsapp('${name}', ${amount})">💬</span>` : ""}
       </div>
@@ -173,73 +159,93 @@ function renderMonthly(data){
   </div>` + div.innerHTML;
 }
 
-// 📊 SUMMARY VIEW
+// 🔹 SUMMARY (FULL GRID)
 function renderSummary(data){
   const div = document.getElementById("summaryPage");
-
   const year = getYear();
 
+  const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+
   let total = 0;
+  let memberTotals = {};
 
   data.forEach(d=>{
-    if(d.year === year && d.paid){
+    if(d.year===year && d.paid){
       total += d.amount || 0;
+      memberTotals[d.name]=(memberTotals[d.name]||0)+d.amount;
     }
   });
 
-  div.innerHTML = `
+  let html = `
   <div class="card">
-    <b>Total Collected (${year})</b>
-    <h3>₹${total}</h3>
+    <b>Overall Summary</b><br><br>
+    Total Fund Collected<br>
+    <h2>₹${total}</h2>
   </div>`;
+
+  members.forEach(m=>{
+    html += `<div class="card row"><span>${m}</span><b>₹${memberTotals[m]||0}</b></div>`;
+  });
+
+  html += `<div class="card"><b>${year} Breakdown</b><br><br><table>
+  <tr><th>Member</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr>`;
+
+  members.forEach(name=>{
+    let rowTotal=0;
+    html+=`<tr><td>${name}</td>`;
+
+    months.forEach(m=>{
+      const e=data.find(d=>d.name===name && d.month===m && d.year===year);
+      const amt=e?e.amount:0;
+      rowTotal+=amt;
+      html+=`<td>${amt||"-"}</td>`;
+    });
+
+    html+=`<td><b>${rowTotal}</b></td></tr>`;
+  });
+
+  html+=`</table></div>`;
+
+  div.innerHTML=html;
 }
 
-// 🔄 REALTIME DATA
+// 🔄 DATA
 onSnapshot(collection(db,"fund"), snap=>{
-  const data = snap.docs.map(d=>({id:d.id,...d.data()}));
+  const data=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderMonthly(data);
   renderSummary(data);
 });
 
-// 🔐 AUTH CHECK
-onAuthStateChanged(auth, user => {
-  if(user && user.email === OWNER_EMAIL){
-    isOwner = true;
-  } else {
-    isOwner = false;
-  }
-});
-
 // ✏️ UPDATE
-window.updateAmount = async function(id, name, val){
-  const month = getMonth();
-  const year = getYear();
+window.updateAmount = async function(id,name,val){
+  const month=getMonth();
+  const year=getYear();
 
   if(id){
-    await updateDoc(doc(db,"fund",id), { amount: Number(val) });
-  } else {
-    await addDoc(collection(db,"fund"), {
-      name, month, year, amount:Number(val), paid:false
+    await updateDoc(doc(db,"fund",id),{amount:Number(val)});
+  }else{
+    await addDoc(collection(db,"fund"),{
+      name,month,year,amount:Number(val),paid:false
     });
   }
 };
 
-// ✔ TOGGLE
-window.toggle = async function(id, current, name){
-  const month = getMonth();
-  const year = getYear();
+// ✔ TOGGLE (FIXED)
+window.toggle = async function(id,current,name){
+  const month=getMonth();
+  const year=getYear();
 
   if(id){
-    await updateDoc(doc(db,"fund",id), { paid: !current });
-  } else {
-    await addDoc(collection(db,"fund"), {
-      name, month, year, amount:0, paid:true
+    await updateDoc(doc(db,"fund",id),{paid:!current});
+  }else{
+    await addDoc(collection(db,"fund"),{
+      name,month,year,amount:0,paid:true
     });
   }
 };
 
-// 💬 WHATSAPP
-window.whatsapp = (name, amount)=>{
+// 💬
+window.whatsapp = (name,amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
 };
 
