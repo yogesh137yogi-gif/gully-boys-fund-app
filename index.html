@@ -21,7 +21,24 @@ button { padding:5px 10px; margin-top:5px; }
 
 <div class="topbar">
   <h2>Gully Boys Fund</h2>
-  <button onclick="createMonth()">➕ New Month</button>
+  <select id="monthSelect">
+  <option>January</option>
+  <option>February</option>
+  <option>March</option>
+  <option>April</option>
+  <option>May</option>
+  <option>June</option>
+  <option>July</option>
+  <option>August</option>
+  <option>September</option>
+  <option>October</option>
+  <option>November</option>
+  <option>December</option>
+</select>
+
+<input id="yearInput" type="number" value="2026" style="width:80px">
+
+<button onclick="createMonth()">➕ Create</button>
 </div>
 
 <div id="loginDiv">
@@ -86,7 +103,33 @@ async function createMonth() {
   alert("New month created!");
 }
 
-window.createMonth = createMonth;
+window.createMonth = async function() {
+  const month = document.getElementById("monthSelect").value;
+  const year = Number(document.getElementById("yearInput").value);
+
+  const snapshot = await getDocs(collection(db, "fund"));
+
+  const exists = snapshot.docs.some(d =>
+    d.data().month === month && d.data().year === year
+  );
+
+  if (exists) {
+    alert("Month already exists!");
+    return;
+  }
+
+  for (let name of members) {
+    await addDoc(collection(db, "fund"), {
+      name,
+      month,
+      year,
+      amount: 0,
+      paid: false
+    });
+  }
+
+  alert(month + " " + year + " created!");
+};
 
 const appDiv = document.getElementById("app");
 const summaryDiv = document.getElementById("summary");
