@@ -12,13 +12,17 @@ h2 { text-align:center; }
 input { padding:5px; width:80px; }
 button { padding:5px 10px; margin-top:5px; }
 .summary { background:#222; color:white; padding:10px; border-radius:10px; }
+.topbar { display:flex; justify-content:space-between; align-items:center; }
 </style>
 
 </head>
 
 <body>
 
-<h2>Gully Boys Fund</h2>
+<div class="topbar">
+  <h2>Gully Boys Fund</h2>
+  <button onclick="createMonth()">➕ New Month</button>
+</div>
 
 <div id="loginDiv">
   <input id="email" placeholder="Email"><br><br>
@@ -31,7 +35,7 @@ button { padding:5px 10px; margin-top:5px; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -47,24 +51,57 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const appDiv = document.getElementById("app");
-const summaryDiv = document.getElementById("summary");
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
 function getCurrentMonth() {
-  const d = new Date();
-  return d.toLocaleString('default', { month: 'long' });
+  return new Date().toLocaleString('default', { month: 'long' });
 }
 
 function getCurrentYear() {
   return new Date().getFullYear();
 }
 
+async function createMonth() {
+  const month = getCurrentMonth();
+  const year = getCurrentYear();
+
+  const snapshot = await getDocs(collection(db, "fund"));
+  const exists = snapshot.docs.some(d => d.data().month === month && d.data().year === year);
+
+  if (exists) {
+    alert("Month already exists!");
+    return;
+  }
+
+  for (let name of members) {
+    await addDoc(collection(db, "fund"), {
+      name,
+      month,
+      year,
+      amount: 0,
+      paid: false
+    });
+  }
+
+  alert("New month created!");
+}
+
+window.createMonth = createMonth;
+
+const appDiv = document.getElementById("app");
+const summaryDiv = document.getElementById("summary");
+
 function render(data, isOwner) {
   appDiv.innerHTML = "";
 
   let total = 0;
 
-  data.forEach(member => {
+  const month = getCurrentMonth();
+  const year = getCurrentYear();
+
+  const filtered = data.filter(d => d.month === month && d.year === year);
+
+  filtered.forEach(member => {
     if(member.paid) total += member.amount || 0;
 
     const div = document.createElement("div");
@@ -88,9 +125,7 @@ function render(data, isOwner) {
     appDiv.appendChild(div);
   });
 
-  summaryDiv.innerHTML = `
-    <b>Total Collected:</b> ₹${total}
-  `;
+  summaryDiv.innerHTML = `<b>Total Collected (${month}):</b> ₹${total}`;
 }
 
 onSnapshot(collection(db, "fund"), (snap) => {
