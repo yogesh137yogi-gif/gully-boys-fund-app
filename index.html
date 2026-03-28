@@ -115,6 +115,9 @@ window.createMonth = async function() {
 window.loadMonth = function() {
   window.selectedMonth = document.getElementById("viewMonth").value;
   window.selectedYear = Number(document.getElementById("viewYear").value);
+
+  // force UI refresh
+  location.reload();
 };
 
 const appDiv = document.getElementById("app");
