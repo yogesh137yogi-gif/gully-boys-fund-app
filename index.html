@@ -49,6 +49,25 @@ const firebaseConfig = {
   "January","February","March","April","May","June",
   "July","August","September","October","November","December"
 ];
+window.createMonth = async function(){
+
+const month = getMonth();
+const year = getYear();
+
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+
+for(let name of members){
+await addDoc(collection(db,"fund"), {
+name,
+month,
+year,
+amount: 0,
+paid: false
+});
+}
+
+alert("Month created successfully!");
+};
 
 window.changeMonth = function(step){
   let month = localStorage.getItem("month") || "March";
@@ -102,19 +121,14 @@ let filtered = data.filter(d => d.month===month && d.year===year);
 
 const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
-// 🔥 AUTO CREATE IF EMPTY
 if(filtered.length === 0){
-for(let name of members){
-await addDoc(collection(db,"fund"), {
-name,
-month,
-year,
-amount: 0,
-paid: false
-});
+
+div.innerHTML = `     <div class="card">       <b>No data for ${month} ${year}</b><br><br>       <button onclick="createMonth()">Create Month</button>     </div>
+  `;
+
+return;
 }
-return; // wait for refresh
-}
+
 
 let total = 0;
 
