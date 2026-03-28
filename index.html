@@ -43,13 +43,17 @@ getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
 const OWNER_EMAIL = "yogesh137.yogi@gmail.com";
-  const auth = getAuth(app);
+ const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const auth = getAuth(app);
+
 let isOwner = false;
 
 onAuthStateChanged(auth, user => {
-  if(user && user.email === OWNER_EMAIL){
-    isOwner = true;
-  }
+if(user && user.email === OWNER_EMAIL){
+isOwner = true;
+}
 });
 
 //import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
@@ -294,14 +298,26 @@ paid: false
 };
 
 
-window.toggle = async function(id, current){
+window.toggle = async function(id, current, name){
 
-if(!id) return; // no record yet
+const month = getMonth();
+const year = getYear();
 
+if(id){
 await updateDoc(doc(db,"fund",id), {
 paid: !current
 });
+} else {
+await addDoc(collection(db,"fund"), {
+name,
+month,
+year,
+amount: 0,
+paid: true
+});
+}
 };
+
 
 
 window.whatsapp = (name, amount)=>{
