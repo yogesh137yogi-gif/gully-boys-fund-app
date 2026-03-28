@@ -121,8 +121,8 @@ let total = 0;
 filtered.forEach(m=>{
 total += m.amount || 0;
 
-```
 div.innerHTML += `
+
 <div class="card">
   <div class="row">
     <b>${m.name}</b>
@@ -134,7 +134,6 @@ div.innerHTML += `
     <span onclick="whatsapp('${m.name}', ${m.amount})">💬</span>
   </div>
 </div>`;
-```
 
 });
 
