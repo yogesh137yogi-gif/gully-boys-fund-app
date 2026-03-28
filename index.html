@@ -3,25 +3,31 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gully Boys Fund</title>
+<title>Fund Manager</title>
 
 <style>
 body {
   font-family: Arial;
-  background:#f5f6f8;
-  padding:15px;
+  background:#f4f5f7;
+  margin:0;
 }
 
-h2 { text-align:center; }
+.header {
+  padding:15px;
+  font-weight:bold;
+  display:flex;
+  justify-content:space-between;
+}
 
-.container { max-width:500px; margin:auto; }
+.container {
+  padding:10px;
+}
 
 .card {
   background:white;
   padding:12px;
   border-radius:12px;
   margin-bottom:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
 .row {
@@ -30,173 +36,173 @@ h2 { text-align:center; }
   align-items:center;
 }
 
+.input {
+  width:80px;
+  padding:5px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+
+.btn {
+  padding:5px 10px;
+  border:none;
+  border-radius:6px;
+  background:#eee;
+}
+
+.nav {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  display:flex;
+  justify-content:space-around;
+  padding:10px;
+  border-top:1px solid #ddd;
+}
+
+.active { color:blue; }
+
 .progress {
   height:6px;
   background:#eee;
   border-radius:10px;
-  margin-top:8px;
 }
 
-.progress-bar {
+.bar {
   height:6px;
-  background:#4CAF50;
-  border-radius:10px;
+  background:green;
 }
-
-.member {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.circle {
-  width:35px;
-  height:35px;
-  border-radius:50%;
-  background:#e0f2f1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-}
-
-.table {
-  overflow-x:auto;
-}
-
-table {
-  width:100%;
-  border-collapse:collapse;
-}
-
-td, th {
-  text-align:center;
-  padding:5px;
-  font-size:12px;
-}
-
-.paid { background:#c8f7c5; border-radius:50%; padding:5px;}
-.unpaid { background:#eee; border-radius:50%; padding:5px;}
 </style>
 
 </head>
 
 <body>
 
-<div class="container">
-
-<h2>Yearly Summary</h2>
-
-<div class="card row">
-  <button onclick="changeYear(-1)">⬅</button>
-  <b id="yearDisplay">2026</b>
-  <button onclick="changeYear(1)">➡</button>
+<div class="header">
+  Fund Manager
+  <span onclick="exportData()">⬇</span>
 </div>
 
-<div class="card">
-  <div>Total Collected</div>
-  <h3 id="totalYear">₹0</h3>
-  <div class="progress">
-    <div id="progressBar" class="progress-bar" style="width:0%"></div>
-  </div>
-</div>
+<div class="container" id="monthlyPage"></div>
+<div class="container" id="summaryPage" style="display:none"></div>
 
-<div id="members"></div>
-
-<div class="card table">
-  <b>Monthly Breakdown</b>
-  <table id="table"></table>
-</div>
-
+<div class="nav">
+  <div onclick="showPage('monthly')" id="navMonthly">📅 Monthly</div>
+  <div onclick="showPage('summary')" id="navSummary">📊 Summary</div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
   authDomain: "gully-boys-fund.firebaseapp.com",
-  projectId: "gully-boys-fund",
+  projectId: "gully-boys-fund"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let selectedYear = 2026;
-const membersList = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
-const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+let currentPage = "monthly";
 
-window.changeYear = function(val){
-  selectedYear += val;
-  render(window.allData);
+window.showPage = function(p){
+  currentPage = p;
+  document.getElementById("monthlyPage").style.display = p==="monthly"?"block":"none";
+  document.getElementById("summaryPage").style.display = p==="summary"?"block":"none";
 };
 
-function render(data){
-  if(!data) return;
+function getMonth(){
+  return localStorage.getItem("month") || "March";
+}
+function getYear(){
+  return Number(localStorage.getItem("year")) || 2026;
+}
 
-  const yearData = data.filter(d => d.year == selectedYear);
+function renderMonthly(data){
+  const div = document.getElementById("monthlyPage");
+  div.innerHTML = "";
+
+  const filtered = data.filter(d => d.month===getMonth() && d.year===getYear());
+
+  let total = 0;
+
+  filtered.forEach(m=>{
+    total += m.amount || 0;
+
+    div.innerHTML += `
+    <div class="card">
+      <div class="row">
+        <b>${m.name}</b>
+        <span onclick="toggle('${m.id}', ${m.paid})">${m.paid ? "✔":"❌"}</span>
+      </div>
+
+      <div class="row">
+        ₹ <input class="input" value="${m.amount}" onchange="updateAmount('${m.id}', this.value)">
+        <span onclick="whatsapp('${m.name}', ${m.amount})">💬</span>
+      </div>
+    </div>`;
+  });
+
+  div.innerHTML = `
+  <div class="card">
+    <b>${getMonth()} ${getYear()}</b><br>
+    Collected: ₹${total}
+  </div>` + div.innerHTML;
+}
+
+function renderSummary(data){
+  const div = document.getElementById("summaryPage");
 
   let total = 0;
   let memberTotals = {};
 
-  yearData.forEach(d=>{
+  data.forEach(d=>{
     if(d.paid){
       total += d.amount || 0;
-      memberTotals[d.name] = (memberTotals[d.name] || 0) + d.amount;
+      memberTotals[d.name] = (memberTotals[d.name]||0) + d.amount;
     }
   });
 
-  document.getElementById("yearDisplay").innerText = selectedYear;
-  document.getElementById("totalYear").innerText = "₹" + total;
+  let html = `
+  <div class="card">
+    <b>Total Fund Collected</b>
+    <h3>₹${total}</h3>
+    <div class="progress">
+      <div class="bar" style="width:${(total/16800)*100}%"></div>
+    </div>
+  </div>`;
 
-  let percent = (total / 16800) * 100;
-  document.getElementById("progressBar").style.width = percent + "%";
-
-  // Members
-  let html="";
-  membersList.forEach(m=>{
-    html += `
-    <div class="card member">
-      <div class="row">
-        <div class="circle">${m[0]}</div>
-        <div style="margin-left:10px">${m}</div>
-      </div>
-      <div>₹${memberTotals[m] || 0}</div>
-    </div>`;
+  Object.keys(memberTotals).forEach(n=>{
+    html += `<div class="card row"><span>${n}</span><b>₹${memberTotals[n]}</b></div>`;
   });
 
-  document.getElementById("members").innerHTML = html;
-
-  // Table
-  let table = "<tr><th>Member</th>";
-  months.forEach(m=> table += `<th>${m}</th>`);
-  table += "</tr>";
-
-  membersList.forEach(name=>{
-    table += `<tr><td>${name}</td>`;
-
-    months.forEach((m,i)=>{
-      const fullMonth = new Date(2026,i).toLocaleString('default',{month:'long'});
-      const found = yearData.find(d=> d.name===name && d.month===fullMonth);
-
-      table += `<td>
-        <span class="${found && found.paid ? 'paid':'unpaid'}">
-          ${found ? found.amount : '-'}
-        </span>
-      </td>`;
-    });
-
-    table += "</tr>";
-  });
-
-  document.getElementById("table").innerHTML = table;
+  div.innerHTML = html;
 }
 
 onSnapshot(collection(db,"fund"), snap=>{
-  window.allData = snap.docs.map(d=>d.data());
-  render(window.allData);
+  const data = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderMonthly(data);
+  renderSummary(data);
 });
+
+window.updateAmount = async function(id,val){
+  await updateDoc(doc(db,"fund",id), {amount:Number(val)});
+};
+
+window.toggle = async function(id,current){
+  await updateDoc(doc(db,"fund",id), {paid:!current});
+};
+
+window.whatsapp = function(name, amount){
+  const msg = `Hi ${name}, please pay ₹${amount}`;
+  window.open("https://wa.me/?text="+encodeURIComponent(msg));
+};
+
+window.exportData = function(){
+  alert("Export coming next upgrade 🚀");
+};
 </script>
 
 </body>
