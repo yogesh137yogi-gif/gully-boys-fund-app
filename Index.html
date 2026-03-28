@@ -5,14 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gully Boys Fund</title>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body { font-family: Arial; padding: 15px; background:#f5f5f5;}
 h2 { text-align:center; }
 .card { background:white; padding:10px; margin:10px 0; border-radius:10px; }
 input { padding:5px; width:80px; }
 button { padding:5px 10px; margin-top:5px; }
-.summary { background:#222; color:white; padding:10px; border-radius:10px; }
-.topbar { display:flex; justify-content:space-between; align-items:center; }
+.topbar { display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; }
+canvas { background:white; border-radius:10px; margin-top:10px; }
 </style>
 
 </head>
@@ -21,25 +23,36 @@ button { padding:5px 10px; margin-top:5px; }
 
 <div class="topbar">
   <h2>Gully Boys Fund</h2>
-  <select id="monthSelect">
-  <option>January</option>
-  <option>February</option>
-  <option>March</option>
-  <option>April</option>
-  <option>May</option>
-  <option>June</option>
-  <option>July</option>
-  <option>August</option>
-  <option>September</option>
-  <option>October</option>
-  <option>November</option>
-  <option>December</option>
-</select>
 
+  <div>
+    <select id="monthSelect">
+      <option>January</option><option>February</option><option>March</option>
+      <option>April</option><option>May</option><option>June</option>
+      <option>July</option><option>August</option><option>September</option>
+      <option>October</option><option>November</option><option>December</option>
+    </select>
+
+```
 <input id="yearInput" type="number" value="2026" style="width:80px">
-
 <button onclick="createMonth()">➕ Create</button>
+```
+
+  </div>
 </div>
+
+<br>
+
+<div>
+  <select id="viewMonth"></select>
+  <input id="viewYear" type="number" value="2026" style="width:80px">
+  <button onclick="loadMonth()">View</button>
+</div>
+
+<br>
+
+<canvas id="monthlyChart"></canvas> <canvas id="yearlyChart"></canvas>
+
+<br>
 
 <div id="loginDiv">
   <input id="email" placeholder="Email"><br><br>
@@ -47,7 +60,6 @@ button { padding:5px 10px; margin-top:5px; }
   <button onclick="login()">Login (Owner)</button>
 </div>
 
-<div id="summary" class="summary"></div>
 <div id="app"></div>
 
 <script type="module">
@@ -70,37 +82,13 @@ const auth = getAuth(app);
 
 const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
+let monthlyChart, yearlyChart;
+
 function getCurrentMonth() {
   return new Date().toLocaleString('default', { month: 'long' });
 }
-
 function getCurrentYear() {
   return new Date().getFullYear();
-}
-
-async function createMonth() {
-  const month = getCurrentMonth();
-  const year = getCurrentYear();
-
-  const snapshot = await getDocs(collection(db, "fund"));
-  const exists = snapshot.docs.some(d => d.data().month === month && d.data().year === year);
-
-  if (exists) {
-    alert("Month already exists!");
-    return;
-  }
-
-  for (let name of members) {
-    await addDoc(collection(db, "fund"), {
-      name,
-      month,
-      year,
-      amount: 0,
-      paid: false
-    });
-  }
-
-  alert("New month created!");
 }
 
 window.createMonth = async function() {
@@ -108,7 +96,6 @@ window.createMonth = async function() {
   const year = Number(document.getElementById("yearInput").value);
 
   const snapshot = await getDocs(collection(db, "fund"));
-
   const exists = snapshot.docs.some(d =>
     d.data().month === month && d.data().year === year
   );
@@ -120,33 +107,65 @@ window.createMonth = async function() {
 
   for (let name of members) {
     await addDoc(collection(db, "fund"), {
-      name,
-      month,
-      year,
-      amount: 0,
-      paid: false
+      name, month, year, amount: 0, paid: false
     });
   }
 
   alert(month + " " + year + " created!");
 };
 
+window.loadMonth = function() {
+  const m = document.getElementById("viewMonth").value;
+  const y = Number(document.getElementById("viewYear").value);
+
+  localStorage.setItem("month", m);
+  localStorage.setItem("year", y);
+
+  location.reload();
+};
+
 const appDiv = document.getElementById("app");
-const summaryDiv = document.getElementById("summary");
 
 function render(data, isOwner) {
   appDiv.innerHTML = "";
 
-  let total = 0;
-
-  const month = getCurrentMonth();
-  const year = getCurrentYear();
+  const month = localStorage.getItem("month") || getCurrentMonth();
+  const year = Number(localStorage.getItem("year")) || getCurrentYear();
 
   const filtered = data.filter(d => d.month === month && d.year === year);
 
-  filtered.forEach(member => {
-    if(member.paid) total += member.amount || 0;
+  // 📊 Monthly chart
+  const names = filtered.map(m => m.name);
+  const amounts = filtered.map(m => m.amount || 0);
 
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(document.getElementById("monthlyChart"), {
+    type: "bar",
+    data: {
+      labels: names,
+      datasets: [{ label: "Monthly", data: amounts }]
+    }
+  });
+
+  // 📊 Yearly totals
+  let yearlyTotals = {};
+  data.forEach(d => {
+    if(d.year === year){
+      yearlyTotals[d.name] = (yearlyTotals[d.name] || 0) + (d.amount || 0);
+    }
+  });
+
+  if(yearlyChart) yearlyChart.destroy();
+  yearlyChart = new Chart(document.getElementById("yearlyChart"), {
+    type: "pie",
+    data: {
+      labels: Object.keys(yearlyTotals),
+      datasets: [{ data: Object.values(yearlyTotals) }]
+    }
+  });
+
+  // Cards
+  filtered.forEach(member => {
     const div = document.createElement("div");
     div.className = "card";
 
@@ -167,13 +186,15 @@ function render(data, isOwner) {
 
     appDiv.appendChild(div);
   });
-
-  summaryDiv.innerHTML = `<b>Total Collected (${month}):</b> ₹${total}`;
 }
 
 onSnapshot(collection(db, "fund"), (snap) => {
   const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
   render(data, window.isOwner || false);
+
+  const months = [...new Set(data.map(d => d.month))];
+  document.getElementById("viewMonth").innerHTML =
+    months.map(m => `<option>${m}</option>`).join("");
 });
 
 window.login = function() {
@@ -181,7 +202,6 @@ window.login = function() {
   const pass = document.getElementById("password").value;
 
   signInWithEmailAndPassword(auth, email, pass)
-    .then(() => window.isOwner = true)
     .catch(() => alert("Login failed"));
 };
 
@@ -203,7 +223,6 @@ window.updateAmount = async function(id, value){
   const ref = doc(db, "fund", id);
   await updateDoc(ref, { amount: Number(value) });
 };
-
 </script>
 
 </body>
