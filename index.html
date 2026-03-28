@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -6,14 +7,49 @@
 
 <style>
 body { font-family: Arial; background:#f4f5f7; margin:0; }
-.header { padding:15px; font-weight:bold; display:flex; justify-content:space-between; }
+
+.header {
+  padding:15px;
+  font-weight:bold;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
 .container { padding:10px; }
-.card { background:white; padding:12px; border-radius:12px; margin-bottom:10px; }
-.row { display:flex; justify-content:space-between; align-items:center; }
-.input { width:80px; padding:5px; border-radius:8px; border:1px solid #ccc; }
-.nav { position:fixed; bottom:0; width:100%; background:white; display:flex; justify-content:space-around; padding:10px; border-top:1px solid #ddd; }
-.progress { height:6px; background:#eee; border-radius:10px; }
-.bar { height:6px; background:green; }
+
+.card {
+  background:white;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:10px;
+}
+
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.input {
+  width:80px;
+  padding:5px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  text-align:center;
+}
+
+.nav {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  display:flex;
+  justify-content:space-around;
+  padding:10px;
+  border-top:1px solid #ddd;
+  z-index:999;
+}
 </style>
 
 </head>
@@ -21,7 +57,6 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 <body>
 
 <div class="header">
-  Welcome Yogi
   <span onclick="changeMonth(-1)">⬅</span>
   <b id="monthDisplay">March 2026</b>
   <span onclick="changeMonth(1)">➡</span>
@@ -38,9 +73,7 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { 
-  getFirestore, collection, onSnapshot, updateDoc, doc, addDoc 
-} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -49,27 +82,21 @@ const firebaseConfig = {
   projectId: "gully-boys-fund"
 };
 
-// ✅ Correct order
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// 🔐 Owner check
+// 🔐 OWNER CONTROL
 const OWNER_EMAIL = "yogesh137.yogi@gmail.com";
 let isOwner = false;
 
-onAuthStateChanged(auth, user => {
-  if(user && user.email === OWNER_EMAIL){
-    isOwner = true;
-  }
-});
-
-// 📅 Month logic
+// 📅 MONTH LIST
 const monthsList = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December"
 ];
 
+// 🔄 MONTH CHANGE
 window.changeMonth = function(step){
   let month = localStorage.getItem("month") || "March";
   let year = Number(localStorage.getItem("year")) || 2026;
@@ -89,7 +116,13 @@ window.changeMonth = function(step){
 function getMonth(){ return localStorage.getItem("month") || "March"; }
 function getYear(){ return Number(localStorage.getItem("year")) || 2026; }
 
-// 📅 Monthly UI
+// 📄 PAGE SWITCH
+window.showPage = function(p){
+  document.getElementById("monthlyPage").style.display = p==="monthly"?"block":"none";
+  document.getElementById("summaryPage").style.display = p==="summary"?"block":"none";
+};
+
+// 📅 MONTHLY VIEW
 function renderMonthly(data){
   const div = document.getElementById("monthlyPage");
   div.innerHTML = "";
@@ -100,12 +133,15 @@ function renderMonthly(data){
   document.getElementById("monthDisplay").innerText = month + " " + year;
 
   const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+
   let total = 0;
 
   members.forEach(name => {
 
     const entry = data.find(d =>
-      d.name === name && d.month === month && d.year === year
+      d.name === name &&
+      d.month === month &&
+      d.year === year
     );
 
     const amount = entry ? entry.amount : 0;
@@ -137,9 +173,10 @@ function renderMonthly(data){
   </div>` + div.innerHTML;
 }
 
-// 📊 Summary
+// 📊 SUMMARY VIEW
 function renderSummary(data){
   const div = document.getElementById("summaryPage");
+
   const year = getYear();
 
   let total = 0;
@@ -157,14 +194,23 @@ function renderSummary(data){
   </div>`;
 }
 
-// 🔄 Live data
+// 🔄 REALTIME DATA
 onSnapshot(collection(db,"fund"), snap=>{
   const data = snap.docs.map(d=>({id:d.id,...d.data()}));
   renderMonthly(data);
   renderSummary(data);
 });
 
-// ✏️ Update amount
+// 🔐 AUTH CHECK
+onAuthStateChanged(auth, user => {
+  if(user && user.email === OWNER_EMAIL){
+    isOwner = true;
+  } else {
+    isOwner = false;
+  }
+});
+
+// ✏️ UPDATE
 window.updateAmount = async function(id, name, val){
   const month = getMonth();
   const year = getYear();
@@ -178,7 +224,7 @@ window.updateAmount = async function(id, name, val){
   }
 };
 
-// ✔ Toggle paid
+// ✔ TOGGLE
 window.toggle = async function(id, current, name){
   const month = getMonth();
   const year = getYear();
@@ -192,7 +238,7 @@ window.toggle = async function(id, current, name){
   }
 };
 
-// 💬 WhatsApp
+// 💬 WHATSAPP
 window.whatsapp = (name, amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
 };
