@@ -75,7 +75,8 @@ td, th { padding:6px; }
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+//import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -217,32 +218,64 @@ onSnapshot(collection(db,"fund"), snap=>{
 });
 
 // ✏️ UPDATE
-window.updateAmount = async function(id,name,val){
-  const month=getMonth();
-  const year=getYear();
+window.updateAmount = async function(id, name, val){
 
-  if(id){
-    await updateDoc(doc(db,"fund",id),{amount:Number(val)});
-  }else{
-    await addDoc(collection(db,"fund"),{
-      name,month,year,amount:Number(val),paid:false
-    });
-  }
+const month = getMonth();
+const year = getYear();
+
+const snapshot = await getDocs(collection(db,"fund"));
+
+const existing = snapshot.docs.find(d =>
+d.data().name === name &&
+d.data().month === month &&
+d.data().year === year
+);
+
+if(existing){
+await updateDoc(doc(db,"fund", existing.id), {
+amount: Number(val)
+});
+} else {
+await addDoc(collection(db,"fund"), {
+name,
+month,
+year,
+amount: Number(val),
+paid: false
+});
+}
 };
+
 
 // ✔ TOGGLE (FIXED)
-window.toggle = async function(id,current,name){
-  const month=getMonth();
-  const year=getYear();
+window.toggle = async function(id, current, name){
 
-  if(id){
-    await updateDoc(doc(db,"fund",id),{paid:!current});
-  }else{
-    await addDoc(collection(db,"fund"),{
-      name,month,year,amount:0,paid:true
-    });
-  }
+const month = getMonth();
+const year = getYear();
+
+const snapshot = await getDocs(collection(db,"fund"));
+
+const existing = snapshot.docs.find(d =>
+d.data().name === name &&
+d.data().month === month &&
+d.data().year === year
+);
+
+if(existing){
+await updateDoc(doc(db,"fund", existing.id), {
+paid: !existing.data().paid
+});
+} else {
+await addDoc(collection(db,"fund"), {
+name,
+month,
+year,
+amount: 0,
+paid: true
+});
+}
 };
+
 
 // 💬
 window.whatsapp = (name,amount)=>{
