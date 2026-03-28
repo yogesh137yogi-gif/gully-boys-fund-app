@@ -37,9 +37,13 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-import { addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-import { addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import {
+getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs
+} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+//import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+//import { addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+//import { addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -58,7 +62,11 @@ const year = getYear();
 const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
 // 🔒 Disable button to prevent multiple clicks
-document.getElementById("monthlyPage").innerHTML =     <div class="card">Creating month... please wait</div>;
+//document.getElementById("monthlyPage").innerHTML =     <div class="card">Creating month... please wait</div>;
+  document.getElementById("monthlyPage").innerHTML = `
+
+  <div class="card">Creating month... please wait</div>
+`;
 
 // 🔍 Double check if already exists
 const snapshot = await getDocs(collection(db,"fund"));
