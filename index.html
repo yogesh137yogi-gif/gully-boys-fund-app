@@ -38,6 +38,7 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -88,35 +89,59 @@ function getYear(){
   return Number(localStorage.getItem("year")) || 2026;
 }
 
-function renderMonthly(data){
-  document.getElementById("monthDisplay").innerText = getMonth() + " " + getYear();
-  const div = document.getElementById("monthlyPage");
-  div.innerHTML = "";
+async function renderMonthly(data){
+const div = document.getElementById("monthlyPage");
+div.innerHTML = "";
 
-  const filtered = data.filter(d => d.month===getMonth() && d.year===getYear());
+const month = getMonth();
+const year = getYear();
 
-  let total = 0;
+document.getElementById("monthDisplay").innerText = month + " " + year;
 
-  filtered.forEach(m=>{
-    total += m.amount || 0;
+let filtered = data.filter(d => d.month===month && d.year===year);
 
-    div.innerHTML += `
-    <div class="card">
-      <div class="row">
-        <b>${m.name}</b>
-        <span onclick="toggle('${m.id}', ${m.paid})">${m.paid ? "✔":"❌"}</span>
-      </div>
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
-      <div class="row">
-        ₹ <input class="input" value="${m.amount}" onchange="updateAmount('${m.id}', this.value)">
-        <span onclick="whatsapp('${m.name}', ${m.amount})">💬</span>
-      </div>
-    </div>`;
-  });
+// 🔥 AUTO CREATE IF EMPTY
+if(filtered.length === 0){
+for(let name of members){
+await addDoc(collection(db,"fund"), {
+name,
+month,
+year,
+amount: 0,
+paid: false
+});
+}
+return; // wait for refresh
+}
 
-  div.innerHTML = `
+let total = 0;
+
+filtered.forEach(m=>{
+total += m.amount || 0;
+
+```
+div.innerHTML += `
+<div class="card">
+  <div class="row">
+    <b>${m.name}</b>
+    <span onclick="toggle('${m.id}', ${m.paid})">${m.paid ? "✔":"❌"}</span>
+  </div>
+
+  <div class="row">
+    ₹ <input class="input" value="${m.amount}" onchange="updateAmount('${m.id}', this.value)">
+    <span onclick="whatsapp('${m.name}', ${m.amount})">💬</span>
+  </div>
+</div>`;
+```
+
+});
+
+div.innerHTML = `
+
   <div class="card">
-    <b>${getMonth()} ${getYear()}</b><br>
+    <b>${month} ${year}</b><br>
     Collected: ₹${total}
   </div>` + div.innerHTML;
 }
