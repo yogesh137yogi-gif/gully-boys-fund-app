@@ -1,265 +1,744 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+
+<html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gully Boys Fund</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/lucide@latest"></script><style>
-:root {
-  --primary:#2563eb;
-  --bg:#f8fafc;
-  --card:#fff;
-  --text:#1e293b;
-  --muted:#64748b;
-  --success:#16a34a;
-  --border:#e2e8f0;
-}
-body {margin:0;font-family:Inter;background:var(--bg);padding-bottom:80px;}
-header{display:flex;justify-content:space-between;padding:15px;background:#fff;border-bottom:1px solid var(--border);}
-.container{padding:15px;max-width:500px;margin:auto;}
-.card{background:#fff;padding:15px;border-radius:14px;margin-bottom:12px;border:1px solid var(--border);}
-.member-row{display:flex;justify-content:space-between;align-items:center;}
-.amount-box{background:#f1f5f9;border-radius:8px;padding:6px 10px;display:flex;align-items:center;}
-.amount-box input{border:none;background:transparent;width:70px;}
-.status-btn{background:#f1f5f9;border:none;border-radius:8px;padding:6px;}
-.status-btn.paid{color:var(--success);}
-.summary{font-size:28px;color:var(--success);text-align:center;}
-.table-container{overflow:auto;background:#fff;border-radius:12px;border:1px solid var(--border);}
-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px;}
-th,td{padding:8px;text-align:center;}
-th{background:#f5f5f5;}
-td:first-child,th:first-child{text-align:left;}
-.bottom-nav{position:fixed;bottom:0;width:100%;display:flex;justify-content:space-around;background:#fff;border-top:1px solid var(--border);}
-.nav-item{padding:10px;background:none;border:none;}
-.hidden{display:none;}
-</style></head><body><header>
-  <div>
-    <b>Fund Manager</b><br>
-    <span id="modeTag">Viewer Mode</span>
+<title>Gully Boys Fund</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161922;
+    --surface2: #1e2230;
+    --accent: #f0c040;
+    --accent2: #e07b30;
+    --green: #3ecf8e;
+    --red: #f46060;
+    --text: #eef0f5;
+    --muted: #7a8299;
+    --border: rgba(255,255,255,0.07);
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a1e2e 0%, #0d0f14 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 16px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .app-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .app-title span {
+    color: var(--accent);
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  /* ── Controls ── */
+  .controls-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  select, input[type="number"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    min-width: 0;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(240,192,64,0.12);
+  }
+
+  input[type="number"] {
+    max-width: 90px;
+    flex: 0 0 90px;
+  }
+
+  .btn {
+    padding: 9px 16px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0d0f14;
+  }
+
+  .btn-primary:active { opacity: 0.85; transform: scale(0.97); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:active { opacity: 0.8; }
+
+  .divider-line {
+    height: 1px;
+    background: var(--border);
+    margin: 10px 0;
+  }
+
+  /* ── Main Content ── */
+  .main {
+    padding: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── Section Label ── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 20px 0 10px;
+  }
+
+  /* ── Login Card ── */
+  #loginDiv {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.4s ease;
+  }
+
+  .login-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--accent);
+  }
+
+  .input-field {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .input-field::placeholder { color: var(--muted); }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(240,192,64,0.12);
+  }
+
+  /* ── Member Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    animation: fadeUp 0.35s ease;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: rgba(255,255,255,0.14); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .member-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: #0d0f14;
+    flex-shrink: 0;
+  }
+
+  .member-name {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .member-period {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .status-paid {
+    background: rgba(62,207,142,0.15);
+    color: var(--green);
+  }
+
+  .status-unpaid {
+    background: rgba(244,96,96,0.13);
+    color: var(--red);
+  }
+
+  .card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .amount-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .amount-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .amount-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    outline: none;
+    width: 120px;
+  }
+
+  .amount-input:focus {
+    border-color: var(--accent);
+  }
+
+  .btn-toggle-paid {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.18s;
+    background: rgba(62,207,142,0.15);
+    color: var(--green);
+  }
+
+  .btn-toggle-unpaid {
+    background: rgba(244,96,96,0.13);
+    color: var(--red);
+  }
+
+  .btn-toggle-paid:active, .btn-toggle-unpaid:active {
+    transform: scale(0.95);
+  }
+
+  /* ── Summary Cards ── */
+  .summary-grand {
+    background: linear-gradient(135deg, #1e2a1a, #141e12);
+    border: 1px solid rgba(62,207,142,0.2);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .summary-grand-label {
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .summary-grand-amount {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--green);
+  }
+
+  .summary-member-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .summary-member-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .summary-member-name { font-weight: 600; font-size: 14px; }
+
+  .summary-amount {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  /* ── Table ── */
+  .table-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    overflow-x: auto;
+    margin-bottom: 10px;
+  }
+
+  .table-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  th {
+    color: var(--muted);
+    font-weight: 600;
+    text-align: center;
+    padding: 5px 6px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  th:first-child { text-align: left; }
+
+  td {
+    padding: 7px 6px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--muted);
+  }
+
+  td:first-child {
+    text-align: left;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  td b, th b { color: var(--text); }
+
+  tr:last-child td {
+    border-bottom: none;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Responsive Tweaks ── */
+  @media (max-width: 360px) {
+    .app-title { font-size: 18px; }
+    .summary-grand-amount { font-size: 28px; }
+  }
+</style>
+
+</head>
+
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="header-top">
+    <div class="app-title">Gully <span>Boys</span> Fund</div>
+    <div class="logo-icon">💰</div>
   </div>
-  <button onclick="showLogin()">Login</button>
-</header><div class="container">
-  <h3 id="currentDisplayTitle"></h3>
-  <div id="adminPanel" class="card hidden">
-  <b>Create Month</b><br><br>
 
-  <select id="monthSelect">
-    <option>January</option><option>February</option><option>March</option>
-    <option>April</option><option>May</option><option>June</option>
-    <option>July</option><option>August</option><option>September</option>
-    <option>October</option><option>November</option><option>December</option>
-  </select>
+  <!-- Create Month Row -->
+  <div class="controls-row">
+    <select id="monthSelect" style="flex:2;">
+      <option>January</option><option>February</option><option>March</option>
+      <option>April</option><option>May</option><option>June</option>
+      <option>July</option><option>August</option><option>September</option>
+      <option>October</option><option>November</option><option>December</option>
+    </select>
+    <input id="yearInput" type="number" value="2026">
+    <button class="btn btn-primary" onclick="createMonth()">+ Create</button>
+  </div>
 
-  <input id="yearInput" type="number" value="2026" style="margin-left:10px;width:80px">
+  <div class="divider-line" style="margin:10px 0;"></div>
 
-<br><br> <button onclick="createMonth()">Create Month</button>
+  <!-- View Month Row -->
+  <div class="controls-row">
+    <select id="viewMonth" style="flex:2;"></select>
+    <input id="viewYear" type="number" value="2026">
+    <button class="btn btn-secondary" onclick="loadMonth()">View</button>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- Login -->
+  <div id="loginDiv" style="margin-top:16px;">
+    <div class="login-title">🔐 Owner Login</div>
+    <input id="email" class="input-field" placeholder="Email address">
+    <input id="password" class="input-field" type="password" placeholder="Password">
+    <button class="btn btn-primary" style="width:100%; padding:12px;" onclick="login()">Sign In</button>
+  </div>
+
+  <!-- Member Cards -->
+  <div id="app"></div>
+
+  <!-- Summary -->
+  <div id="summaryPage"></div>
 
 </div>
 
-  <div id="collectedStat"></div>  <div id="app"></div>
-  <div id="summaryPage" class="hidden"></div>
-</div><div id="loginDiv" class="hidden">
-  <input id="email" placeholder="Email"><br>
-  <input id="password" type="password" placeholder="Password"><br>
-  <button onclick="login()">Login</button>
-  <button onclick="closeLogin()">View Only</button>
-</div><nav class="bottom-nav">
-  <button class="nav-item" onclick="switchTab('monthly')">Monthly</button>
-  <button class="nav-item" onclick="switchTab('summary')">Summary</button>
-</nav><script type="module">
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-//import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-  import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
- apiKey:"AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
- authDomain:"gully-boys-fund.firebaseapp.com",
- projectId:"gully-boys-fund"
+  apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
+  authDomain: "gully-boys-fund.firebaseapp.com",
+  projectId: "gully-boys-fund",
+  storageBucket: "gully-boys-fund.firebasestorage.app",
+  messagingSenderId: "311493460566",
+  appId: "1:311493460566:web:0c27b0faad80277568b1f7"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const members=["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
-window.createMonth = async function(){
+//let monthlyChart, yearlyChart;
 
-const month = document.getElementById("monthSelect").value;
-const year = Number(document.getElementById("yearInput").value);
-
-const snapshot = await getDocs(collection(db,"fund"));
-
-const exists = snapshot.docs.some(d =>
-d.data().month === month && d.data().year === year
-);
-
-if(exists){
-alert("Month already exists!");
-return;
+function getCurrentMonth() {
+  return new Date().toLocaleString('default', { month: 'long' });
+}
+function getCurrentYear() {
+  return new Date().getFullYear();
 }
 
-for(let name of members){
-await addDoc(collection(db,"fund"),{
-name,
-month,
-year,
-amount:0,
-paid:false
-});
-}
+window.createMonth = async function() {
+  const month = document.getElementById("monthSelect").value;
+  const year = Number(document.getElementById("yearInput").value);
 
-alert("Month created successfully!");
+  const snapshot = await getDocs(collection(db, "fund"));
+  const exists = snapshot.docs.some(d =>
+    d.data().month === month && d.data().year === year
+  );
+
+  if (exists) {
+    alert("Month already exists!");
+    return;
+  }
+
+  for (let name of members) {
+    await addDoc(collection(db, "fund"), {
+      name, month, year, amount: 0, paid: false
+    });
+  }
+
+  alert(month + " " + year + " created!");
 };
 
+window.loadMonth = function() {
+  const m = document.getElementById("viewMonth").value;
+  const y = Number(document.getElementById("viewYear").value);
 
-window.latestData=[];
-window.isOwner=false;
+  localStorage.setItem("month", m);
+  localStorage.setItem("year", y);
 
-function getMonth(){return localStorage.getItem("month")||new Date().toLocaleString('default',{month:'long'});}
-function getYear(){return Number(localStorage.getItem("year"))||new Date().getFullYear();}
-
-window.switchTab=(t)=>{
-  document.getElementById("app").classList.toggle("hidden",t==="summary");
-  document.getElementById("summaryPage").classList.toggle("hidden",t!=="summary");
+  location.reload();
 };
 
-window.showLogin=()=>document.getElementById("loginDiv").classList.remove("hidden");
+const appDiv = document.getElementById("app");
 
-window.closeLogin=()=>{
- document.getElementById("loginDiv").classList.add("hidden");
- window.isOwner=false;
- document.getElementById("modeTag").innerText="Viewer Mode";
- render(window.latestData,false);
-};
+function render(data, isOwner) {
+  appDiv.innerHTML = "";
 
-window.login = () => {
-const e = email.value;
-const p = password.value;
+  const month = localStorage.getItem("month") || getCurrentMonth();
+  const year = Number(localStorage.getItem("year")) || getCurrentYear();
 
-signInWithEmailAndPassword(auth, e, p)
-.then(() => {
-// ✅ ONLY hide popup
-document.getElementById("loginDiv").classList.add("hidden");
+  const filtered = data.filter(d => d.month === month && d.year === year);
 
-```
-  // ❌ DO NOT touch isOwner here
-})
-.catch(err => alert(err.message));
-```
+  // Section label
+  if (filtered.length > 0) {
+    const label = document.createElement("div");
+    label.className = "section-label";
+    label.textContent = `${month} ${year} — Members`;
+    appDiv.appendChild(label);
+  }
 
-};
-onAuthStateChanged(auth,(user)=>{
-window.isOwner = !!user;
+  // Cards
+  filtered.forEach(member => {
+    const initials = member.name.substring(0, 2).toUpperCase();
+    const isPaid = member.paid;
 
-document.getElementById("modeTag").innerText =
-user ? "Owner Mode" : "Viewer Mode";
+    const div = document.createElement("div");
+    div.className = "card";
 
-// ✅ SHOW CREATE MONTH PANEL
-document.getElementById("adminPanel").classList.toggle("hidden", !user);
-
-render(window.latestData, window.isOwner);
-});
-
-
-
-function render(data,isOwner){
- const appDiv=document.getElementById("app");
- appDiv.innerHTML="";
- const month=getMonth(),year=getYear();
-
- document.getElementById("currentDisplayTitle").innerText=`${month} ${year}`;
-
- const filtered=data.filter(d=>d.month===month&&d.year===year);
-
- let total=0;
-
- filtered.forEach(m=>{
-  if(m.paid) total+=m.amount||0;
-
-  const div=document.createElement("div");
-  div.className="card";
-
-  div.innerHTML=`
-  <div class="member-row">
-    <b>${m.name}</b>
-    ${isOwner?`
-      <div class="amount-box">₹
-        <input value="${m.amount}" onchange="updateAmount('${m.id}',this.value)">
+    div.innerHTML = `
+      <div class="card-header">
+        <div class="member-info">
+          <div class="avatar">${initials}</div>
+          <div>
+            <div class="member-name">${member.name}</div>
+            <div class="member-period">${member.month} ${member.year}</div>
+          </div>
+        </div>
+        <span class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}">
+          ${isPaid ? '✓ Paid' : '✗ Unpaid'}
+        </span>
       </div>
-      <button class="status-btn ${m.paid?'paid':''}" onclick="toggle('${m.id}',${m.paid})">
-        ${m.paid?'✔':'❌'}
-      </button>
-    `:`₹${m.amount}`}
-  </div>`;
+      <div class="card-body">
+        <div>
+          <div class="amount-label">Amount</div>
+          ${isOwner
+            ? `<input class="amount-input" value="${member.amount}" onchange="updateAmount('${member.id}', this.value)">`
+            : `<div class="amount-value">₹${member.amount}</div>`
+          }
+        </div>
+        ${isOwner
+          ? `<button class="btn-toggle-paid ${isPaid ? 'btn-toggle-unpaid' : ''}" onclick="toggle('${member.id}', ${member.paid})">
+              ${isPaid ? 'Mark Unpaid' : 'Mark Paid'}
+            </button>`
+          : ''
+        }
+      </div>
+    `;
 
-  appDiv.appendChild(div);
- });
+    appDiv.appendChild(div);
+  });
 
- document.getElementById("collectedStat").innerText=`₹${total}`;
-
- renderSummary(data);
+  renderSummary(data);
 }
 
 function renderSummary(data){
- const year=getYear();
- const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const year = Number(localStorage.getItem("year")) || new Date().getFullYear();
+  const months = ["January","February","March","April","May","June",
+  "July","August","September","October","November","December"];
 
- let memberTotals={},monthTotals={},grand=0;
- members.forEach(m=>memberTotals[m]=0);
- months.forEach(m=>monthTotals[m]=0);
+  let memberTotals = {};
+  let monthTotals = {};
+  let grandTotal = 0;
 
- data.forEach(d=>{
-  if(d.year===year&&d.paid){
-   memberTotals[d.name]+=d.amount||0;
-   monthTotals[d.month]+=d.amount||0;
-   grand+=d.amount||0;
-  }
- });
+  members.forEach(m=>{ memberTotals[m] = 0; });
+  months.forEach(m=>{ monthTotals[m] = 0; });
 
- let html=`<div class="card"><div class="summary">₹${grand}</div></div>`;
-
- members.forEach(m=>{
-  html+=`<div class="card" style="display:flex;justify-content:space-between">
-  <span>${m}</span><b>₹${memberTotals[m]}</b></div>`;
- });
-
- html+=`<div class="table-container"><table><tr>
- <th>Member</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr>`;
-
- members.forEach(n=>{
-  let row=0;
-  html+=`<tr><td>${n}</td>`;
-  months.forEach(m=>{
-   const e=data.find(d=>d.name===n&&d.month===m&&d.year===year&&d.paid);
-   const a=e?e.amount:0;
-   row+=a;
-   html+=`<td>${a||"-"}</td>`;
+  data.forEach(d=>{
+    if(d.year === year && d.paid){
+      memberTotals[d.name] += d.amount || 0;
+      monthTotals[d.month] += d.amount || 0;
+      grandTotal += d.amount || 0;
+    }
   });
-  html+=`<td>₹${row}</td></tr>`;
- });
 
- html+=`<tr><td>Total</td>`;
- months.forEach(m=>html+=`<td>₹${monthTotals[m]}</td>`);
- html+=`<td>₹${grand}</td></tr></table></div>`;
+  let html = `
+    <div class="section-label" style="margin-top:24px;">Overall Summary — ${year}</div>
+    <div class="summary-grand">
+      <div class="summary-grand-label">Total Collected</div>
+      <div class="summary-grand-amount">₹${grandTotal}</div>
+    </div>
+  `;
 
- document.getElementById("summaryPage").innerHTML=html;
+  members.forEach(m=>{
+    const initials = m.substring(0,2).toUpperCase();
+    html += `
+      <div class="summary-member-card">
+        <div class="summary-member-left">
+          <div class="avatar" style="width:32px;height:32px;font-size:12px;">${initials}</div>
+          <div class="summary-member-name">${m}</div>
+        </div>
+        <div class="summary-amount">₹${memberTotals[m]}</div>
+      </div>
+    `;
+  });
+
+  html += `
+    <div class="section-label" style="margin-top:20px;">${year} Breakdown</div>
+    <div class="table-wrapper">
+      <div class="table-title">Month-wise Contributions</div>
+      <table>
+        <tr>
+          <th>Member</th>
+          ${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}
+          <th>Total</th>
+        </tr>
+  `;
+
+  members.forEach(name=>{
+    let rowTotal = 0;
+    html += `<tr><td><b>${name}</b></td>`;
+    months.forEach(month=>{
+      const entry = data.find(d =>
+        d.name === name && d.month === month && d.year === year && d.paid
+      );
+      const amount = entry ? entry.amount : 0;
+      rowTotal += amount;
+      html += `<td>${amount || "-"}</td>`;
+    });
+    html += `<td><b>₹${rowTotal}</b></td></tr>`;
+  });
+
+  html += `<tr><td><b>Total</b></td>`;
+  months.forEach(m=>{ html += `<td><b>₹${monthTotals[m]}</b></td>`; });
+  html += `<td><b>₹${grandTotal}</b></td></tr>`;
+  html += `</table></div>`;
+
+  document.getElementById("summaryPage").innerHTML = html;
 }
 
-window.toggle=async(id,current)=>{
- if(!window.isOwner)return alert("Owner only");
- await updateDoc(doc(db,"fund",id),{paid:!current});
-};
 
-window.updateAmount=async(id,val)=>{
- if(!window.isOwner)return alert("Owner only");
- await updateDoc(doc(db,"fund",id),{amount:Number(val)});
-};
+onSnapshot(collection(db, "fund"), (snap) => {
+  const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
+  window.latestData = data; // cache latest data
+  render(data, window.isOwner || false);
 
-onSnapshot(collection(db,"fund"),snap=>{
- const data=snap.docs.map(d=>({id:d.id,...d.data()}));
- window.latestData=data;
- render(data,window.isOwner);
+  const months = [...new Set(data.map(d => d.month))];
+  document.getElementById("viewMonth").innerHTML =
+    months.map(m => `<option>${m}</option>`).join("");
 });
-</script></body>
+
+window.login = function() {
+  const email = document.getElementById("email").value;
+  const pass = document.getElementById("password").value;
+
+  signInWithEmailAndPassword(auth, email, pass)
+    .catch(() => alert("Login failed"));
+};
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    window.isOwner = true;
+    document.getElementById("loginDiv").style.display = "none";
+  } else {
+    window.isOwner = false;
+  }
+  // Re-render immediately with cached data so owner/viewer mode switches instantly
+  if (window.latestData) {
+    render(window.latestData, window.isOwner);
+  }
+});
+
+window.toggle = async function(id, current){
+  const ref = doc(db, "fund", id);
+  await updateDoc(ref, { paid: !current });
+};
+
+window.updateAmount = async function(id, value){
+  const ref = doc(db, "fund", id);
+  await updateDoc(ref, { amount: Number(value) });
+};
+</script>
+
+</body>
 </html>
