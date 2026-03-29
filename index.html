@@ -610,7 +610,7 @@ function render(data, isOwner) {
         <div>
           <div class="amount-label">Amount</div>
           ${isOwner
-            ? `<input class="amount-input" value="${member.amount}" onchange="updateAmount('${member.id}', this.value)">`
+            ? `<input class="amount-input" value="${member.amount}" onblur="updateAmount('${member.id}', this.value)" oninput="window.isEditing=true">`
             : `<div class="amount-value">₹${member.amount}</div>`
           }
         </div>
@@ -708,7 +708,14 @@ function renderSummary(data){
 onSnapshot(collection(db, "fund"), (snap) => {
   const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
   window.latestData = data; // cache latest data
-  render(data, window.isOwner || false);
+
+  // Don't re-render if user is actively editing an input field
+  const activeEl = document.activeElement;
+  const isTyping = activeEl && activeEl.classList.contains("amount-input");
+  if (!isTyping) {
+    window.isEditing = false;
+    render(data, window.isOwner || false);
+  }
 
   const months = [...new Set(data.map(d => d.month))];
   document.getElementById("viewMonth").innerHTML =
@@ -742,7 +749,13 @@ window.toggle = async function(id, current){
 };
 
 window.updateAmount = async function(id, value){
+  window.isEditing = false;
   const ref = doc(db, "fund", id);
+  // Update local cache immediately so re-render shows correct value
+  if (window.latestData) {
+    const entry = window.latestData.find(d => d.id === id);
+    if (entry) entry.amount = Number(value);
+  }
   await updateDoc(ref, { amount: Number(value) });
 };
 </script>
