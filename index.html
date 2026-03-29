@@ -1,767 +1,570 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gully Boys Fund</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Firebase v9 compat — proven stable for browser use -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 
 <style>
-  :root {
-    --bg: #0d0f14;
-    --surface: #161922;
-    --surface2: #1e2230;
-    --accent: #f0c040;
-    --accent2: #e07b30;
-    --green: #3ecf8e;
-    --red: #f46060;
-    --text: #eef0f5;
-    --muted: #7a8299;
-    --border: rgba(255,255,255,0.07);
-    --radius: 16px;
-  }
+:root{
+  --bg:#0a0c10;--card:#13161e;--card2:#1a1e28;
+  --gold:#f5c842;--gold2:#e8943a;
+  --green:#34d399;--red:#f87171;
+  --text:#f0f2f8;--muted:#6b7280;
+  --border:rgba(255,255,255,0.06);--r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+.header{
+  background:linear-gradient(180deg,#13161e 0%,#0a0c10 100%);
+  border-bottom:1px solid var(--border);
+  padding:16px;position:sticky;top:0;z-index:50;
+}
+.header-title{
+  font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;
+  background:linear-gradient(90deg,var(--gold),var(--gold2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:12px;
+}
+.tabs{display:flex;gap:6px;margin-bottom:12px;}
+.tab{
+  flex:1;padding:8px;border-radius:8px;border:none;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  background:var(--card2);color:var(--muted);transition:all .2s;
+}
+.tab.active{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a0c10;}
+.row{display:flex;gap:8px;align-items:center;}
+select,.inp{
+  background:var(--card2);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:10px;font-family:'Nunito',sans-serif;
+  font-size:13px;outline:none;flex:1;min-width:0;
+  -webkit-appearance:none;appearance:none;
+}
+select:focus,.inp:focus{border-color:var(--gold);}
+.inp-sm{max-width:85px;flex:0 0 85px;}
+.btn{
+  padding:9px 16px;border-radius:10px;border:none;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  white-space:nowrap;transition:all .15s;
+}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a0c10;}
+.btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--border);}
+.btn:active{transform:scale(.96);}
+.divider{height:1px;background:var(--border);margin:10px 0;}
+.main{padding:14px;max-width:500px;margin:0 auto;padding-bottom:50px;}
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding-bottom: 40px;
-  }
+/* Login */
+.lcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px;}
+.lcard h3{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);margin-bottom:14px;letter-spacing:.5px;}
+.field{
+  width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+  padding:12px 14px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:14px;
+  outline:none;margin-bottom:10px;display:block;
+}
+.field::placeholder{color:var(--muted);}
+.field:focus{border-color:var(--gold);}
+.err{color:var(--red);font-size:12px;margin:-4px 0 8px;display:none;}
+.btn-viewer{
+  width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;transition:all .2s;
+}
+.btn-viewer:hover,.btn-viewer:active{border-color:var(--gold);color:var(--gold);}
 
-  /* ── Header ── */
-  .header {
-    background: linear-gradient(135deg, #1a1e2e 0%, #0d0f14 100%);
-    border-bottom: 1px solid var(--border);
-    padding: 20px 16px 16px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
-  }
+/* Owner bar */
+.obar{
+  background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);
+  border-radius:10px;padding:9px 14px;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;font-weight:700;color:var(--gold);
+}
+.btn-lo{
+  padding:4px 10px;border-radius:6px;border:1px solid rgba(245,200,66,.3);
+  background:transparent;color:var(--gold);font-family:'Nunito',sans-serif;
+  font-size:11px;font-weight:700;cursor:pointer;
+}
+.slabel{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:16px 0 10px;}
 
-  .header-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-  }
+/* Member cards */
+.mcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:8px;}
+.mcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.mcard-left{display:flex;align-items:center;gap:10px;}
+.av{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:15px;color:#0a0c10;
+}
+.mname{font-weight:800;font-size:15px;}
+.mperiod{font-size:11px;color:var(--muted);}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.bp{background:rgba(52,211,153,.12);color:var(--green);}
+.bu{background:rgba(248,113,113,.12);color:var(--red);}
+.mcard-body{display:flex;flex-direction:column;gap:10px;}
+.alabel{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px;}
+.aview{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.5px;}
+.ainput{
+  width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+  padding:10px 14px;border-radius:10px;font-family:'Bebas Neue',sans-serif;
+  font-size:22px;outline:none;display:block;-webkit-appearance:none;appearance:none;
+}
+.ainput:focus{border-color:var(--gold);}
+.btoggle{
+  width:100%;padding:12px;border-radius:10px;border:none;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  transition:all .15s;-webkit-tap-highlight-color:transparent;
+}
+.bpaid{background:rgba(52,211,153,.12);color:var(--green);}
+.bunpaid{background:rgba(248,113,113,.12);color:var(--red);}
+.btoggle:active{transform:scale(.97);}
 
-  .app-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    color: var(--text);
-  }
+/* Stats row */
+.srow{display:flex;gap:8px;margin-bottom:8px;}
+.sbox{flex:1;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center;}
+.sval{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);}
+.slbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
 
-  .app-title span {
-    color: var(--accent);
-  }
+/* Summary */
+.grand{
+  background:linear-gradient(135deg,#0f2318,#0a1a10);
+  border:1px solid rgba(52,211,153,.2);
+  border-radius:var(--r);padding:20px;text-align:center;margin-bottom:8px;
+}
+.g-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:6px;}
+.g-amt{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--green);letter-spacing:1px;}
+.g-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.msum{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+.msum-l{display:flex;align-items:center;gap:9px;}
+.msum-n{font-weight:700;font-size:14px;}
+.msum-s{font-size:10px;color:var(--muted);}
+.msum-a{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);}
+.pbar{height:3px;background:var(--card2);border-radius:4px;overflow:hidden;width:100px;margin-top:4px;}
+.pfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:4px;}
 
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-  }
+/* Table */
+.twrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow-x:auto;margin-bottom:8px;}
+.ttitle{font-weight:800;font-size:13px;padding:14px 14px 0;}
+table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;margin-top:10px;}
+th{color:var(--muted);font-weight:700;text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;}
+th:first-child{text-align:left;padding-left:14px;}
+td{padding:7px 8px;text-align:center;border-bottom:1px solid rgba(255,255,255,.03);color:var(--muted);}
+td:first-child{text-align:left;padding-left:14px;color:var(--text);font-weight:700;}
+tr:last-child td{border-bottom:none;color:var(--gold);font-weight:700;}
+.tc{color:var(--green) !important;}
+.tfoot{padding:14px;}
 
-  /* ── Controls ── */
-  .controls-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
+/* Toast */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--card2);border:1px solid var(--border);
+  padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;
+  transition:transform .3s;z-index:999;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.tok{border-color:var(--green);color:var(--green);}
+.terr{border-color:var(--red);color:var(--red);}
 
-  select, input[type="number"] {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 9px 12px;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-    flex: 1;
-    min-width: 0;
-  }
+/* Empty */
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-i{font-size:40px;margin-bottom:10px;}
+.empty-t{font-size:14px;font-weight:700;color:var(--text);}
+.empty-s{font-size:12px;margin-top:5px;}
 
-  select:focus, input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(240,192,64,0.12);
-  }
-
-  input[type="number"] {
-    max-width: 90px;
-    flex: 0 0 90px;
-  }
-
-  .btn {
-    padding: 9px 16px;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all 0.18s;
-    white-space: nowrap;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #0d0f14;
-  }
-
-  .btn-primary:active { opacity: 0.85; transform: scale(0.97); }
-
-  .btn-secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-
-  .btn-secondary:active { opacity: 0.8; }
-
-  .divider-line {
-    height: 1px;
-    background: var(--border);
-    margin: 10px 0;
-  }
-
-  /* ── Main Content ── */
-  .main {
-    padding: 16px;
-    max-width: 480px;
-    margin: 0 auto;
-  }
-
-  /* ── Section Label ── */
-  .section-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin: 20px 0 10px;
-  }
-
-  /* ── Login Card ── */
-  #loginDiv {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 20px;
-    animation: fadeUp 0.4s ease;
-  }
-
-  .login-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 14px;
-    color: var(--accent);
-  }
-
-  .input-field {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 11px 14px;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    outline: none;
-    width: 100%;
-    margin-bottom: 10px;
-  }
-
-  .input-field::placeholder { color: var(--muted); }
-  .input-field:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(240,192,64,0.12);
-  }
-
-  /* ── Member Cards ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 10px;
-    animation: fadeUp 0.35s ease;
-    transition: border-color 0.2s;
-  }
-
-  .card:hover { border-color: rgba(255,255,255,0.14); }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-
-  .member-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 14px;
-    color: #0d0f14;
-    flex-shrink: 0;
-  }
-
-  .member-name {
-    font-weight: 600;
-    font-size: 15px;
-  }
-
-  .member-period {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 1px;
-  }
-
-  .status-badge {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-  }
-
-  .status-paid {
-    background: rgba(62,207,142,0.15);
-    color: var(--green);
-  }
-
-  .status-unpaid {
-    background: rgba(244,96,96,0.13);
-    color: var(--red);
-  }
-
-  .card-body {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .amount-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-
-  .amount-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .amount-input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 12px 14px;
-    border-radius: 10px;
-    font-family: 'Syne', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-    outline: none;
-    width: 100%;
-    display: block;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-
-  .amount-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(240,192,64,0.12);
-  }
-
-  .btn-toggle-paid {
-    padding: 13px 14px;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.18s;
-    background: rgba(62,207,142,0.15);
-    color: var(--green);
-    width: 100%;
-    text-align: center;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .btn-toggle-unpaid {
-    background: rgba(244,96,96,0.13);
-    color: var(--red);
-  }
-
-  .btn-toggle-paid:active, .btn-toggle-unpaid:active {
-    transform: scale(0.97);
-    opacity: 0.85;
-  }
-
-  /* ── Summary Cards ── */
-  .summary-grand {
-    background: linear-gradient(135deg, #1e2a1a, #141e12);
-    border: 1px solid rgba(62,207,142,0.2);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 10px;
-    text-align: center;
-  }
-
-  .summary-grand-label {
-    font-size: 11px;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--green);
-    margin-bottom: 6px;
-    font-weight: 600;
-  }
-
-  .summary-grand-amount {
-    font-family: 'Syne', sans-serif;
-    font-size: 36px;
-    font-weight: 800;
-    color: var(--green);
-  }
-
-  .summary-member-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .summary-member-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .summary-member-name { font-weight: 600; font-size: 14px; }
-
-  .summary-amount {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 16px;
-    color: var(--accent);
-  }
-
-  /* ── Table ── */
-  .table-wrapper {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    overflow-x: auto;
-    margin-bottom: 10px;
-  }
-
-  .table-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 14px;
-    color: var(--text);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-
-  th {
-    color: var(--muted);
-    font-weight: 600;
-    text-align: center;
-    padding: 5px 6px;
-    border-bottom: 1px solid var(--border);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  th:first-child { text-align: left; }
-
-  td {
-    padding: 7px 6px;
-    text-align: center;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    color: var(--muted);
-  }
-
-  td:first-child {
-    text-align: left;
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  td b, th b { color: var(--text); }
-
-  tr:last-child td {
-    border-bottom: none;
-    color: var(--accent);
-    font-weight: 600;
-  }
-
-  /* ── Animations ── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── Responsive Tweaks ── */
-  @media (max-width: 360px) {
-    .app-title { font-size: 18px; }
-    .summary-grand-amount { font-size: 28px; }
-  }
+@keyframes fu{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.fi{animation:fu .3s ease;}
 </style>
-
 </head>
-
 <body>
 
-<!-- ── HEADER ── -->
 <div class="header">
-  <div class="header-top">
-    <div class="app-title">Gully <span>Boys</span> Fund</div>
-    <div class="logo-icon">💰</div>
+  <div class="header-title">💰 Gully Boys Fund</div>
+  <div class="tabs">
+    <button class="tab active" id="tabM" onclick="switchTab('month')">Monthly</button>
+    <button class="tab" id="tabS" onclick="switchTab('summary')">Summary</button>
   </div>
-
-  <!-- Create Month Row -->
-  <div class="controls-row">
-    <select id="monthSelect" style="flex:2;">
+  <div class="row" id="monthRow">
+    <select id="selM">
       <option>January</option><option>February</option><option>March</option>
       <option>April</option><option>May</option><option>June</option>
       <option>July</option><option>August</option><option>September</option>
       <option>October</option><option>November</option><option>December</option>
     </select>
-    <input id="yearInput" type="number" value="2026">
-    <button class="btn btn-primary" onclick="createMonth()">+ Create</button>
-  </div>
-
-  <div class="divider-line" style="margin:10px 0;"></div>
-
-  <!-- View Month Row -->
-  <div class="controls-row">
-    <select id="viewMonth" style="flex:2;"></select>
-    <input id="viewYear" type="number" value="2026">
-    <button class="btn btn-secondary" onclick="loadMonth()">View</button>
+    <input class="inp inp-sm" id="selY" type="number" value="2026">
+    <button class="btn btn-ghost" onclick="goView()">View</button>
   </div>
 </div>
 
-<!-- ── MAIN ── -->
 <div class="main">
-
-  <!-- Login -->
-  <div id="loginDiv" style="margin-top:16px;">
-    <div class="login-title">🔐 Owner Login</div>
-    <input id="email" class="input-field" placeholder="Email address">
-    <input id="password" class="input-field" type="password" placeholder="Password">
-    <button class="btn btn-primary" style="width:100%; padding:12px;" onclick="login()">Sign In</button>
+  <div id="authWrap">
+    <div class="lcard">
+      <h3>🔐 Owner Login</h3>
+      <input class="field" id="eml" type="email" placeholder="Email address" autocomplete="email">
+      <input class="field" id="pwd" type="password" placeholder="Password" autocomplete="current-password">
+      <div class="err" id="lerr"></div>
+      <button class="btn btn-gold" style="width:100%;padding:13px;" onclick="doLogin()">Sign In</button>
+      <button class="btn-viewer" onclick="guestMode()">👁 Continue as Viewer</button>
+    </div>
   </div>
 
-  <!-- Member Cards -->
-  <div id="app"></div>
+  <div class="obar" id="obar" style="display:none;">
+    <span>✏️ Owner Mode</span>
+    <button class="btn-lo" onclick="doLogout()">Logout</button>
+  </div>
 
-  <!-- Summary -->
-  <div id="summaryPage"></div>
+  <div id="createWrap" style="display:none;margin-bottom:14px;">
+    <div class="slabel">Create New Month</div>
+    <div class="row">
+      <select id="cM">
+        <option>January</option><option>February</option><option>March</option>
+        <option>April</option><option>May</option><option>June</option>
+        <option>July</option><option>August</option><option>September</option>
+        <option>October</option><option>November</option><option>December</option>
+      </select>
+      <input class="inp inp-sm" id="cY" type="number" value="2026">
+      <button class="btn btn-gold" id="cBtn" onclick="doCreate()">+ Create</button>
+    </div>
+  </div>
 
+  <div id="cardsWrap"></div>
+  <div id="summaryWrap" style="display:none;"></div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+<div class="toast" id="toast"></div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
-  authDomain: "gully-boys-fund.firebaseapp.com",
-  projectId: "gully-boys-fund",
-  storageBucket: "gully-boys-fund.firebasestorage.app",
-  messagingSenderId: "311493460566",
-  appId: "1:311493460566:web:0c27b0faad80277568b1f7"
-};
+<script>
+// ── Firebase init ─────────────────────────────────────
+firebase.initializeApp({
+  apiKey:"AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
+  authDomain:"gully-boys-fund.firebaseapp.com",
+  projectId:"gully-boys-fund",
+  storageBucket:"gully-boys-fund.appspot.com",
+  messagingSenderId:"311493460566",
+  appId:"1:311493460566:web:0c27b0faad80277568b1f7"
+});
+const db   = firebase.firestore();
+const auth = firebase.auth();
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+// ── Constants ─────────────────────────────────────────
+const MEMBERS = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+const MONTHS  = ["January","February","March","April","May","June",
+                 "July","August","September","October","November","December"];
+const DEF_AMT = 200;
 
-const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
-
-function getCurrentMonth() {
-  return new Date().toLocaleString("default", { month: "long" });
-}
-function getCurrentYear() {
-  return new Date().getFullYear();
-}
-
-window.createMonth = async function() {
-  const month = document.getElementById("monthSelect").value;
-  const year = Number(document.getElementById("yearInput").value);
-  const snapshot = await getDocs(collection(db, "fund"));
-  const exists = snapshot.docs.some(d =>
-    d.data().month === month && d.data().year === year
-  );
-  if (exists) { alert("Month already exists!"); return; }
-  for (let name of members) {
-    await addDoc(collection(db, "fund"), { name, month, year, amount: 0, paid: false });
-  }
-  alert(month + " " + year + " created!");
-};
-
-window.loadMonth = function() {
-  const m = document.getElementById("viewMonth").value;
-  const y = Number(document.getElementById("viewYear").value);
-  localStorage.setItem("month", m);
-  localStorage.setItem("year", y);
-  location.reload();
-};
-
-const appDiv = document.getElementById("app");
-
-// ── State ──────────────────────────────────────────────
-let allData   = [];   // master copy from Firestore
+// ── State ─────────────────────────────────────────────
+let docs      = {};   // id -> doc
 let isOwner   = false;
+let started   = false;
+let tab       = 'month';
+let unsub     = null;
 
-// ── Helpers ────────────────────────────────────────────
-function getMonth() { return localStorage.getItem("month") || getCurrentMonth(); }
-function getYear()  { return Number(localStorage.getItem("year")) || getCurrentYear(); }
+// current view month/year — initialised below
+let vMonth, vYear;
 
-// ── Build one member card ───────────────────────────────
-function buildCard(member) {
-  const initials = member.name.substring(0, 2).toUpperCase();
-  const isPaid   = member.paid;
+// ── Boot ──────────────────────────────────────────────
+(function boot(){
+  const now = new Date();
+  vMonth = now.toLocaleString('default',{month:'long'});
+  vYear  = now.getFullYear();
+  document.getElementById('selM').value = vMonth;
+  document.getElementById('selY').value = vYear;
+  document.getElementById('cM').value   = vMonth;
+  document.getElementById('cY').value   = vYear;
 
-  const div = document.createElement("div");
-  div.className = "card";
-  div.setAttribute("data-id", member.id);
+  auth.onAuthStateChanged(user => {
+    isOwner = !!user;
+    renderAuthUI();
+    if (isOwner && !started) startListen();
+  });
+})();
 
-  // Card header — always shown
-  const header = document.createElement("div");
-  header.className = "card-header";
-  header.innerHTML = `
-    <div class="member-info">
-      <div class="avatar">${initials}</div>
-      <div>
-        <div class="member-name">${member.name}</div>
-        <div class="member-period">${member.month} ${member.year}</div>
+// ── Auth UI ───────────────────────────────────────────
+function renderAuthUI(){
+  document.getElementById('authWrap').style.display    = (!isOwner && !started) ? 'block' : 'none';
+  document.getElementById('obar').style.display        = isOwner ? 'flex' : 'none';
+  document.getElementById('createWrap').style.display  = isOwner ? 'block' : 'none';
+  if (started) render();
+}
+
+// ── Guest mode ────────────────────────────────────────
+function guestMode(){
+  document.getElementById('authWrap').style.display = 'none';
+  if (!started) startListen();
+}
+
+// ── Firestore listener ────────────────────────────────
+function startListen(){
+  if (unsub) return;
+  started = true;
+  unsub = db.collection('fund').onSnapshot(snap => {
+    docs = {};
+    snap.forEach(d => { docs[d.id] = {id:d.id, ...d.data()}; });
+    render();
+  }, err => toast('❌ '+err.message,'err'));
+}
+
+// ── Tab switch ────────────────────────────────────────
+function switchTab(t){
+  tab = t;
+  document.getElementById('tabM').classList.toggle('active', t==='month');
+  document.getElementById('tabS').classList.toggle('active', t==='summary');
+  document.getElementById('monthRow').style.display    = t==='month'   ? 'flex'  : 'none';
+  document.getElementById('cardsWrap').style.display   = t==='month'   ? 'block' : 'none';
+  document.getElementById('summaryWrap').style.display = t==='summary' ? 'block' : 'none';
+  render();
+}
+
+// ── View month ────────────────────────────────────────
+function goView(){
+  vMonth = document.getElementById('selM').value;
+  vYear  = Number(document.getElementById('selY').value);
+  render();
+}
+
+// ── Render dispatcher ─────────────────────────────────
+function render(){
+  if (!started) return;
+  if (tab==='month')   renderCards();
+  else                 renderSummary();
+}
+
+// ── Render cards ──────────────────────────────────────
+function renderCards(){
+  const wrap = document.getElementById('cardsWrap');
+  const list = Object.values(docs).filter(d=>d.month===vMonth && d.year===vYear);
+  list.sort((a,b)=>MEMBERS.indexOf(a.name)-MEMBERS.indexOf(b.name));
+
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty fi">
+      <div class="empty-i">📭</div>
+      <div class="empty-t">No data for ${vMonth} ${vYear}</div>
+      <div class="empty-s">${isOwner?'Create this month above.':'Ask owner to create this month.'}</div>
+    </div>`;
+    return;
+  }
+
+  const total     = list.filter(d=>d.paid).reduce((s,d)=>s+(d.amount||0),0);
+  const paidCnt   = list.filter(d=>d.paid).length;
+  const unpaidCnt = list.length - paidCnt;
+
+  let h = `
+  <div class="slabel">${vMonth} ${vYear} · ${paidCnt}/${list.length} Paid</div>
+  <div class="srow fi">
+    <div class="sbox"><div class="sval">₹${total}</div><div class="slbl">Collected</div></div>
+    <div class="sbox"><div class="sval">${paidCnt}</div><div class="slbl">Paid</div></div>
+    <div class="sbox"><div class="sval">${unpaidCnt}</div><div class="slbl">Pending</div></div>
+  </div>`;
+
+  list.forEach(d=>{
+    const ini  = d.name.substring(0,2).toUpperCase();
+    const paid = d.paid;
+    h += `<div class="mcard fi">
+      <div class="mcard-top">
+        <div class="mcard-left">
+          <div class="av">${ini}</div>
+          <div><div class="mname">${d.name}</div><div class="mperiod">${d.month} ${d.year}</div></div>
+        </div>
+        <span class="badge ${paid?'bp':'bu'}">${paid?'✓ Paid':'✗ Unpaid'}</span>
       </div>
-    </div>
-    <span class="status-badge ${isPaid ? "status-paid" : "status-unpaid"}">
-      ${isPaid ? "✓ Paid" : "✗ Unpaid"}
-    </span>`;
-  div.appendChild(header);
+      <div class="mcard-body">
+        <div>
+          <div class="alabel">Amount</div>
+          ${isOwner
+            ? `<input class="ainput" type="number" inputmode="numeric" value="${d.amount||0}" id="ai_${d.id}">`
+            : `<div class="aview">₹${d.amount||0}</div>`}
+        </div>
+        ${isOwner?`
+        <button class="btoggle ${paid?'bunpaid':'bpaid'}" id="bt_${d.id}" onclick="tPaid('${d.id}')">
+          ${paid?'Mark Unpaid':'Mark Paid'}
+        </button>`:''}
+      </div>
+    </div>`;
+  });
 
-  // Card body
-  const body = document.createElement("div");
-  body.className = "card-body";
+  wrap.innerHTML = h;
 
-  const amountWrap = document.createElement("div");
-  const amountLabel = document.createElement("div");
-  amountLabel.className = "amount-label";
-  amountLabel.textContent = "Amount";
-  amountWrap.appendChild(amountLabel);
-
-  if (isOwner) {
-    // Editable input
-    const input = document.createElement("input");
-    input.className = "amount-input";
-    input.type = "number";
-    input.setAttribute("inputmode", "numeric");
-    input.value = member.amount;
-
-    // Save on blur (tap away / keyboard dismiss)
-    input.addEventListener("blur", async function() {
-      const val = Number(this.value);
-      // update master data
-      const entry = allData.find(d => d.id === member.id);
-      if (entry) entry.amount = val;
-      renderSummary();
-      await updateDoc(doc(db, "fund", member.id), { amount: val }).catch(() => {
-        alert("Save failed. Check connection.");
-      });
+  // Attach blur/enter listeners to amount inputs AFTER HTML is set
+  if(isOwner){
+    list.forEach(d=>{
+      const inp = document.getElementById('ai_'+d.id);
+      if(!inp) return;
+      inp.addEventListener('blur', function(){ sAmt(d.id, this.value); });
+      inp.addEventListener('keydown', function(e){ if(e.key==='Enter') this.blur(); });
     });
+  }
+}
 
-    // Also save on Enter
-    input.addEventListener("keydown", function(e) {
-      if (e.key === "Enter") this.blur();
-    });
+// ── Save amount ───────────────────────────────────────
+function sAmt(id, val){
+  const num = Number(val);
+  db.collection('fund').doc(id).update({amount:num})
+    .then(()=>{ if(docs[id]) docs[id].amount=num; toast('✓ Saved','ok'); })
+    .catch(e=>toast('❌ '+e.message,'err'));
+}
 
-    amountWrap.appendChild(input);
+// ── Toggle paid ───────────────────────────────────────
+function tPaid(id){
+  const d      = docs[id]; if(!d) return;
+  const newP   = !d.paid;
+  const btn    = document.getElementById('bt_'+id);
+  const card   = btn ? btn.closest('.mcard') : null;
 
-    // Toggle paid button
-    const btn = document.createElement("button");
-    btn.className = "btn-toggle-paid" + (isPaid ? " btn-toggle-unpaid" : "");
-    btn.textContent = isPaid ? "Mark Unpaid" : "Mark Paid";
-
-    btn.addEventListener("click", async function() {
-      const newPaid = !(member.paid);
-
-      // Update master data
-      const entry = allData.find(d => d.id === member.id);
-      if (entry) entry.paid = newPaid;
-      member.paid = newPaid;
-
-      // Update UI instantly
-      btn.className = "btn-toggle-paid" + (newPaid ? " btn-toggle-unpaid" : "");
-      btn.textContent = newPaid ? "Mark Unpaid" : "Mark Paid";
-      const badge = div.querySelector(".status-badge");
-      if (badge) {
-        badge.className = "status-badge " + (newPaid ? "status-paid" : "status-unpaid");
-        badge.textContent = newPaid ? "✓ Paid" : "✗ Unpaid";
-      }
-      renderSummary();
-
-      await updateDoc(doc(db, "fund", member.id), { paid: newPaid }).catch(() => {
-        alert("Save failed. Check connection.");
-      });
-    });
-
-    body.appendChild(amountWrap);
-    body.appendChild(btn);
-
-  } else {
-    // Read-only amount
-    const amountVal = document.createElement("div");
-    amountVal.className = "amount-value";
-    amountVal.textContent = "₹" + member.amount;
-    amountWrap.appendChild(amountVal);
-    body.appendChild(amountWrap);
+  // Instant UI
+  d.paid = newP;
+  if(btn){
+    btn.className = 'btoggle '+(newP?'bunpaid':'bpaid');
+    btn.textContent = newP?'Mark Unpaid':'Mark Paid';
+  }
+  if(card){
+    const badge = card.querySelector('.badge');
+    if(badge){ badge.className='badge '+(newP?'bp':'bu'); badge.textContent=newP?'✓ Paid':'✗ Unpaid'; }
   }
 
-  div.appendChild(body);
-  return div;
+  db.collection('fund').doc(id).update({paid:newP})
+    .then(()=>{ toast(newP?'✓ Marked Paid':'✓ Marked Unpaid','ok'); renderCards(); })
+    .catch(e=>{ toast('❌ '+e.message,'err'); d.paid=!newP; renderCards(); });
 }
 
-// ── Render all cards for current month/year ─────────────
-function renderCards() {
-  appDiv.innerHTML = "";
-  const month    = getMonth();
-  const year     = getYear();
-  const filtered = allData.filter(d => d.month === month && d.year === year);
-
-  if (filtered.length > 0) {
-    const label = document.createElement("div");
-    label.className = "section-label";
-    label.textContent = month + " " + year + " — Members";
-    appDiv.appendChild(label);
+// ── Summary ───────────────────────────────────────────
+function renderSummary(){
+  const wrap  = document.getElementById('summaryWrap');
+  const all   = Object.values(docs);
+  if(!all.length){
+    wrap.innerHTML=`<div class="empty fi"><div class="empty-i">📊</div><div class="empty-t">No data yet</div></div>`;
+    return;
   }
 
-  filtered.forEach(member => appDiv.appendChild(buildCard(member)));
-  renderSummary();
-}
+  let mT={},mMo={},moT={},grand=0;
+  MEMBERS.forEach(m=>{mT[m]=0;mMo[m]=0;});
+  MONTHS.forEach(m=>{moT[m]=0;});
 
-// ── Re-render everything ────────────────────────────────
-function renderAll() {
-  renderCards();
-}
-
-// ── Summary section ────────────────────────────────────
-function renderSummary() {
-  const year   = getYear();
-  const months = ["January","February","March","April","May","June",
-                  "July","August","September","October","November","December"];
-
-  let memberTotals = {}, monthTotals = {}, grandTotal = 0;
-  members.forEach(m => { memberTotals[m] = 0; });
-  months.forEach(m  => { monthTotals[m]  = 0; });
-
-  allData.forEach(d => {
-    if (d.year === year && d.paid) {
-      memberTotals[d.name] = (memberTotals[d.name] || 0) + (d.amount || 0);
-      monthTotals[d.month] = (monthTotals[d.month] || 0) + (d.amount || 0);
-      grandTotal += (d.amount || 0);
+  all.forEach(d=>{
+    if(d.year===vYear && d.paid){
+      mT[d.name]  = (mT[d.name]||0)+(d.amount||0);
+      mMo[d.name] = (mMo[d.name]||0)+1;
+      moT[d.month]= (moT[d.month]||0)+(d.amount||0);
+      grand      += (d.amount||0);
     }
   });
 
-  let html = `
-    <div class="section-label" style="margin-top:24px;">Overall Summary — ${year}</div>
-    <div class="summary-grand">
-      <div class="summary-grand-label">Total Collected</div>
-      <div class="summary-grand-amount">₹${grandTotal}</div>
-    </div>`;
+  const maxV  = Math.max(...Object.values(mT),1);
+  const actMo = MONTHS.filter(m=>all.some(d=>d.month===m&&d.year===vYear));
+  const sorted= [...MEMBERS].sort((a,b)=>mT[b]-mT[a]);
 
-  members.forEach(m => {
-    const initials = m.substring(0,2).toUpperCase();
-    html += `<div class="summary-member-card">
-      <div class="summary-member-left">
-        <div class="avatar" style="width:32px;height:32px;font-size:12px;">${initials}</div>
-        <div class="summary-member-name">${m}</div>
+  let h = `
+  <div class="slabel">Year ${vYear} Overview</div>
+  <div class="grand fi">
+    <div class="g-lbl">Total Fund Collected</div>
+    <div class="g-amt">₹${grand}</div>
+    <div class="g-sub">${actMo.length} month${actMo.length!==1?'s':''} · ${MEMBERS.length} members</div>
+  </div>
+  <div class="slabel">Member Contributions</div>`;
+
+  sorted.forEach(m=>{
+    const ini = m.substring(0,2).toUpperCase();
+    const pct = Math.round((mT[m]/maxV)*100);
+    h+=`<div class="msum fi">
+      <div class="msum-l">
+        <div class="av" style="width:34px;height:34px;font-size:12px;">${ini}</div>
+        <div>
+          <div class="msum-n">${m}</div>
+          <div class="msum-s">${mMo[m]} month${mMo[m]!==1?'s':''} paid</div>
+          <div class="pbar"><div class="pfill" style="width:${pct}%"></div></div>
+        </div>
       </div>
-      <div class="summary-amount">₹${memberTotals[m]}</div>
+      <div class="msum-a">₹${mT[m]}</div>
     </div>`;
   });
 
-  html += `<div class="section-label" style="margin-top:20px;">${year} Breakdown</div>
-    <div class="table-wrapper">
-      <div class="table-title">Month-wise Contributions</div>
-      <table>
-        <tr><th>Member</th>${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}<th>Total</th></tr>`;
+  h+=`<div class="slabel">Monthly Breakdown — ${vYear}</div>
+  <div class="twrap fi">
+    <div class="ttitle">Contribution Table</div>
+    <table>
+      <tr><th>Member</th>${actMo.map(m=>`<th>${m.substring(0,3)}</th>`).join('')}<th>Total</th></tr>`;
 
-  members.forEach(name => {
-    let rowTotal = 0;
-    html += `<tr><td><b>${name}</b></td>`;
-    months.forEach(month => {
-      const entry = allData.find(d => d.name===name && d.month===month && d.year===year && d.paid);
-      const amt   = entry ? (entry.amount || 0) : 0;
-      rowTotal   += amt;
-      html += `<td>${amt || "-"}</td>`;
+  MEMBERS.forEach(name=>{
+    let rT=0;
+    h+=`<tr><td>${name}</td>`;
+    actMo.forEach(mo=>{
+      const e=all.find(d=>d.name===name&&d.month===mo&&d.year===vYear&&d.paid);
+      const a=e?(e.amount||0):0; rT+=a;
+      h+=`<td class="${a>0?'tc':''}">${a>0?'₹'+a:'-'}</td>`;
     });
-    html += `<td><b>₹${rowTotal}</b></td></tr>`;
+    h+=`<td>₹${rT}</td></tr>`;
   });
 
-  html += `<tr><td><b>Total</b></td>`;
-  months.forEach(m => { html += `<td><b>₹${monthTotals[m]}</b></td>`; });
-  html += `<td><b>₹${grandTotal}</b></td></tr></table></div>`;
+  h+=`<tr><td>Total</td>`;
+  actMo.forEach(m=>{h+=`<td>₹${moT[m]||0}</td>`;});
+  h+=`<td>₹${grand}</td></tr></table><div class="tfoot"></div></div>`;
 
-  document.getElementById("summaryPage").innerHTML = html;
+  wrap.innerHTML = h;
 }
 
-// ── Auth ────────────────────────────────────────────────
-onAuthStateChanged(auth, (user) => {
-  isOwner = !!user;
-  document.getElementById("loginDiv").style.display = user ? "none" : "block";
-  // Re-render cards whenever auth state changes (login / logout)
-  if (allData.length > 0) renderAll();
-});
+// ── Create month ──────────────────────────────────────
+async function doCreate(){
+  const mo  = document.getElementById('cM').value;
+  const yr  = Number(document.getElementById('cY').value);
+  const btn = document.getElementById('cBtn');
 
-// ── Firestore live listener ─────────────────────────────
-onSnapshot(collection(db, "fund"), (snap) => {
-  allData = snap.docs.map(d => ({ id: d.id, ...d.d
+  if(Object.values(docs).some(d=>d.month===mo&&d.year===yr)){
+    toast('⚠️ Month already exists','err'); return;
+  }
+
+  btn.textContent='Creating...'; btn.disabled=true;
+  try{
+    const batch = db.batch();
+    MEMBERS.forEach(name=>{
+      batch.set(db.collection('fund').doc(), {name,month:mo,year:yr,amount:DEF_AMT,paid:false});
+    });
+    await batch.commit();
+    vMonth = mo; vYear = yr;
+    document.getElementById('selM').value = mo;
+    document.getElementById('selY').value = yr;
+    switchTab('month');
+    toast(`✓ ${mo} ${yr} created`,'ok');
+  }catch(e){ toast('❌ '+e.message,'err'); }
+  btn.textContent='+ Create'; btn.disabled=false;
+}
+
+// ── Login ─────────────────────────────────────────────
+function doLogin(){
+  const em  = document.getElementById('eml').value.trim();
+  const pw  = document.getElementById('pwd').value;
+  const err = document.getElementById('lerr');
+  err.style.display='none';
+  if(!em||!pw){ err.textContent='Enter email and password.'; err.style.display='block'; return; }
+  auth.signInWithEmailAndPassword(em,pw)
+    .catch(e=>{ err.textContent=e.message; err.style.display='block'; });
+}
+
+// ── Logout ────────────────────────────────────────────
+function doLogout(){
+  auth.signOut().then(()=>{
+    isOwner=false; started=false;
+    if(unsub){unsub();unsub=null;}
+    docs={};
+    document.getElementById('cardsWrap').innerHTML='';
+    document.getElementById('summaryWrap').innerHTML='';
+    renderAuthUI();
+    toast('Logged out','ok');
+  });
+}
+
+// ── Toast ─────────────────────────────────────────────
+let tT;
+function toast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show '+(type==='ok'?'tok':'terr');
+  clearTimeout(tT);
+  tT=setTimeout(()=>{el.className='toast';},2500);
+}
+</script>
+</body>
+</html>
