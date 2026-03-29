@@ -763,6 +763,24 @@ function renderSummary(data){
 }
 
 
+// Track auth state separately so both can coordinate
+let authResolved = false;
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    window.isOwner = true;
+    document.getElementById("loginDiv").style.display = "none";
+  } else {
+    window.isOwner = false;
+  }
+  authResolved = true;
+
+  // If data already loaded, re-render with correct owner state
+  if (initialLoaded && localData.length > 0) {
+    render(localData, window.isOwner);
+  }
+});
+
 onSnapshot(collection(db, "fund"), (snap) => {
   const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
   window.latestData = data;
@@ -773,14 +791,4 @@ onSnapshot(collection(db, "fund"), (snap) => {
     months.map(m => `<option>${m}</option>`).join("");
 
   if (!initialLoaded) {
-    // First load — set local state and render
-    initialLoaded = true;
-    localData = data;
-    render(localData, window.isOwner || false);
-  } else {
-    // After first load — only sync NEW records from Firestore (e.g. newly created months)
-    // Don't overwrite existing records (that would undo local changes not yet confirmed)
-    const existingIds = new Set(localData.map(d => d.id));
-    const newRecords = data.filter(d => !existingIds.has(d.id));
-    if (newRecords.length > 0) {
-      localData
+    // First load — wait for auth to resolve first, then r
