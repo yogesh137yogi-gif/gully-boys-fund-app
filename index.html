@@ -209,25 +209,31 @@ onSnapshot(collection(db,"fund"), snap=>{
 
 // 🔧 UPDATE
 window.updateAmount = async function(key,name,val){
-  const [n,m,y]=key.split("_");
 
-  await setDoc(doc(db,"fund",key),{
-    name:n, month:m, year:Number(y),
-    amount:Number(val),
-    paid:false
-  });
+const [n,m,y]=key.split("_");
+
+await setDoc(doc(db,"fund",key),{
+name:n,
+month:m,
+year:Number(y),
+amount:Number(val)
+}, {merge:true}); // 🔥 IMPORTANT
 };
+
 
 // 🔧 TOGGLE
 window.toggle = async function(key,current){
-  const [n,m,y]=key.split("_");
 
-  await setDoc(doc(db,"fund",key),{
-    name:n, month:m, year:Number(y),
-    amount:0,
-    paid:!current
-  }, {merge:true});
+const [n,m,y]=key.split("_");
+
+await setDoc(doc(db,"fund",key),{
+name:n,
+month:m,
+year:Number(y),
+paid: !current
+}, {merge:true}); // 🔥 IMPORTANT
 };
+
 
 window.whatsapp = (name,amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
