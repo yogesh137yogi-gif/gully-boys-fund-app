@@ -525,10 +525,8 @@ const auth = getAuth(app);
 
 const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
-//let monthlyChart, yearlyChart;
-
 function getCurrentMonth() {
-  return new Date().toLocaleString('default', { month: 'long' });
+  return new Date().toLocaleString("default", { month: "long" });
 }
 function getCurrentYear() {
   return new Date().getFullYear();
@@ -537,173 +535,179 @@ function getCurrentYear() {
 window.createMonth = async function() {
   const month = document.getElementById("monthSelect").value;
   const year = Number(document.getElementById("yearInput").value);
-
   const snapshot = await getDocs(collection(db, "fund"));
   const exists = snapshot.docs.some(d =>
     d.data().month === month && d.data().year === year
   );
-
-  if (exists) {
-    alert("Month already exists!");
-    return;
-  }
-
+  if (exists) { alert("Month already exists!"); return; }
   for (let name of members) {
-    await addDoc(collection(db, "fund"), {
-      name, month, year, amount: 0, paid: false
-    });
+    await addDoc(collection(db, "fund"), { name, month, year, amount: 0, paid: false });
   }
-
   alert(month + " " + year + " created!");
 };
 
 window.loadMonth = function() {
   const m = document.getElementById("viewMonth").value;
   const y = Number(document.getElementById("viewYear").value);
-
   localStorage.setItem("month", m);
   localStorage.setItem("year", y);
-
   location.reload();
 };
 
 const appDiv = document.getElementById("app");
 
-// Local state — single source of truth, Firestore only loads once
-let localData = [];
-let initialLoaded = false;
+// ── State ──────────────────────────────────────────────
+let allData   = [];   // master copy from Firestore
+let isOwner   = false;
 
-function buildCard(member, isOwner) {
+// ── Helpers ────────────────────────────────────────────
+function getMonth() { return localStorage.getItem("month") || getCurrentMonth(); }
+function getYear()  { return Number(localStorage.getItem("year")) || getCurrentYear(); }
+
+// ── Build one member card ───────────────────────────────
+function buildCard(member) {
   const initials = member.name.substring(0, 2).toUpperCase();
-  const isPaid = member.paid;
+  const isPaid   = member.paid;
+
   const div = document.createElement("div");
   div.className = "card";
   div.setAttribute("data-id", member.id);
 
-  div.innerHTML = `
-    <div class="card-header">
-      <div class="member-info">
-        <div class="avatar">${initials}</div>
-        <div>
-          <div class="member-name">${member.name}</div>
-          <div class="member-period">${member.month} ${member.year}</div>
-        </div>
-      </div>
-      <span class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}">
-        ${isPaid ? '✓ Paid' : '✗ Unpaid'}
-      </span>
-    </div>
-    <div class="card-body">
+  // Card header — always shown
+  const header = document.createElement("div");
+  header.className = "card-header";
+  header.innerHTML = `
+    <div class="member-info">
+      <div class="avatar">${initials}</div>
       <div>
-        <div class="amount-label">Amount</div>
-        ${isOwner
-          ? `<input class="amount-input" type="number" inputmode="numeric" value="${member.amount}">`
-          : `<div class="amount-value">₹${member.amount}</div>`
-        }
+        <div class="member-name">${member.name}</div>
+        <div class="member-period">${member.month} ${member.year}</div>
       </div>
-      ${isOwner
-        ? `<button class="btn-toggle-paid ${isPaid ? 'btn-toggle-unpaid' : ''}" data-toggle-id="${member.id}" data-paid="${member.paid}">
-            ${isPaid ? 'Mark Unpaid' : 'Mark Paid'}
-          </button>`
-        : ''
-      }
     </div>
-  `;
+    <span class="status-badge ${isPaid ? "status-paid" : "status-unpaid"}">
+      ${isPaid ? "✓ Paid" : "✗ Unpaid"}
+    </span>`;
+  div.appendChild(header);
 
-  // Attach events via addEventListener — no inline handlers
+  // Card body
+  const body = document.createElement("div");
+  body.className = "card-body";
+
+  const amountWrap = document.createElement("div");
+  const amountLabel = document.createElement("div");
+  amountLabel.className = "amount-label";
+  amountLabel.textContent = "Amount";
+  amountWrap.appendChild(amountLabel);
+
   if (isOwner) {
-    const input = div.querySelector(".amount-input");
-    if (input) {
-      // Save on both blur and Enter key — most reliable on mobile
-      async function saveAmount() {
-        const val = Number(input.value);
-        const entry = localData.find(d => d.id === member.id);
-        if (entry) entry.amount = val;
-        renderSummary(localData);
-        try {
-          await updateDoc(doc(db, "fund", member.id), { amount: val });
-        } catch(e) {
-          alert("Save failed. Check your connection.");
-        }
+    // Editable input
+    const input = document.createElement("input");
+    input.className = "amount-input";
+    input.type = "number";
+    input.setAttribute("inputmode", "numeric");
+    input.value = member.amount;
+
+    // Save on blur (tap away / keyboard dismiss)
+    input.addEventListener("blur", async function() {
+      const val = Number(this.value);
+      // update master data
+      const entry = allData.find(d => d.id === member.id);
+      if (entry) entry.amount = val;
+      renderSummary();
+      await updateDoc(doc(db, "fund", member.id), { amount: val }).catch(() => {
+        alert("Save failed. Check connection.");
+      });
+    });
+
+    // Also save on Enter
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") this.blur();
+    });
+
+    amountWrap.appendChild(input);
+
+    // Toggle paid button
+    const btn = document.createElement("button");
+    btn.className = "btn-toggle-paid" + (isPaid ? " btn-toggle-unpaid" : "");
+    btn.textContent = isPaid ? "Mark Unpaid" : "Mark Paid";
+
+    btn.addEventListener("click", async function() {
+      const newPaid = !(member.paid);
+
+      // Update master data
+      const entry = allData.find(d => d.id === member.id);
+      if (entry) entry.paid = newPaid;
+      member.paid = newPaid;
+
+      // Update UI instantly
+      btn.className = "btn-toggle-paid" + (newPaid ? " btn-toggle-unpaid" : "");
+      btn.textContent = newPaid ? "Mark Unpaid" : "Mark Paid";
+      const badge = div.querySelector(".status-badge");
+      if (badge) {
+        badge.className = "status-badge " + (newPaid ? "status-paid" : "status-unpaid");
+        badge.textContent = newPaid ? "✓ Paid" : "✗ Unpaid";
       }
-      input.addEventListener("blur", saveAmount);
-      input.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") { this.blur(); }
+      renderSummary();
+
+      await updateDoc(doc(db, "fund", member.id), { paid: newPaid }).catch(() => {
+        alert("Save failed. Check connection.");
       });
-    }
+    });
 
-    const btn = div.querySelector("[data-toggle-id]");
-    if (btn) {
-      btn.addEventListener("click", async function() {
-        const id = this.getAttribute("data-toggle-id");
-        const currentPaid = this.getAttribute("data-paid") === "true";
-        const newPaid = !currentPaid;
+    body.appendChild(amountWrap);
+    body.appendChild(btn);
 
-        // Update local state immediately
-        const entry = localData.find(d => d.id === id);
-        if (entry) entry.paid = newPaid;
-
-        // Update UI immediately without waiting for Firestore
-        this.setAttribute("data-paid", newPaid);
-        this.className = `btn-toggle-paid ${newPaid ? 'btn-toggle-unpaid' : ''}`;
-        this.textContent = newPaid ? 'Mark Unpaid' : 'Mark Paid';
-
-        const badge = div.querySelector(".status-badge");
-        if (badge) {
-          badge.className = `status-badge ${newPaid ? 'status-paid' : 'status-unpaid'}`;
-          badge.textContent = newPaid ? '✓ Paid' : '✗ Unpaid';
-        }
-
-        renderSummary(localData);
-
-        // Save to Firestore
-        try {
-          await updateDoc(doc(db, "fund", id), { paid: newPaid });
-        } catch(e) {
-          alert("Save failed. Check your connection.");
-        }
-      });
-    }
+  } else {
+    // Read-only amount
+    const amountVal = document.createElement("div");
+    amountVal.className = "amount-value";
+    amountVal.textContent = "₹" + member.amount;
+    amountWrap.appendChild(amountVal);
+    body.appendChild(amountWrap);
   }
 
+  div.appendChild(body);
   return div;
 }
 
-function render(data, isOwner) {
-  const month = localStorage.getItem("month") || getCurrentMonth();
-  const year = Number(localStorage.getItem("year")) || getCurrentYear();
-  const filtered = data.filter(d => d.month === month && d.year === year);
-
+// ── Render all cards for current month/year ─────────────
+function renderCards() {
   appDiv.innerHTML = "";
+  const month    = getMonth();
+  const year     = getYear();
+  const filtered = allData.filter(d => d.month === month && d.year === year);
 
   if (filtered.length > 0) {
     const label = document.createElement("div");
     label.className = "section-label";
-    label.textContent = `${month} ${year} — Members`;
+    label.textContent = month + " " + year + " — Members";
     appDiv.appendChild(label);
   }
 
-  filtered.forEach(member => appDiv.appendChild(buildCard(member, isOwner)));
-  renderSummary(data);
+  filtered.forEach(member => appDiv.appendChild(buildCard(member)));
+  renderSummary();
 }
 
-function renderSummary(data){
-  const year = Number(localStorage.getItem("year")) || new Date().getFullYear();
+// ── Re-render everything ────────────────────────────────
+function renderAll() {
+  renderCards();
+}
+
+// ── Summary section ────────────────────────────────────
+function renderSummary() {
+  const year   = getYear();
   const months = ["January","February","March","April","May","June",
-  "July","August","September","October","November","December"];
+                  "July","August","September","October","November","December"];
 
-  let memberTotals = {};
-  let monthTotals = {};
-  let grandTotal = 0;
+  let memberTotals = {}, monthTotals = {}, grandTotal = 0;
+  members.forEach(m => { memberTotals[m] = 0; });
+  months.forEach(m  => { monthTotals[m]  = 0; });
 
-  members.forEach(m=>{ memberTotals[m] = 0; });
-  months.forEach(m=>{ monthTotals[m] = 0; });
-
-  data.forEach(d=>{
-    if(d.year === year && d.paid){
-      memberTotals[d.name] += d.amount || 0;
-      monthTotals[d.month] += d.amount || 0;
-      grandTotal += d.amount || 0;
+  allData.forEach(d => {
+    if (d.year === year && d.paid) {
+      memberTotals[d.name] = (memberTotals[d.name] || 0) + (d.amount || 0);
+      monthTotals[d.month] = (monthTotals[d.month] || 0) + (d.amount || 0);
+      grandTotal += (d.amount || 0);
     }
   });
 
@@ -712,83 +716,52 @@ function renderSummary(data){
     <div class="summary-grand">
       <div class="summary-grand-label">Total Collected</div>
       <div class="summary-grand-amount">₹${grandTotal}</div>
-    </div>
-  `;
+    </div>`;
 
-  members.forEach(m=>{
+  members.forEach(m => {
     const initials = m.substring(0,2).toUpperCase();
-    html += `
-      <div class="summary-member-card">
-        <div class="summary-member-left">
-          <div class="avatar" style="width:32px;height:32px;font-size:12px;">${initials}</div>
-          <div class="summary-member-name">${m}</div>
-        </div>
-        <div class="summary-amount">₹${memberTotals[m]}</div>
+    html += `<div class="summary-member-card">
+      <div class="summary-member-left">
+        <div class="avatar" style="width:32px;height:32px;font-size:12px;">${initials}</div>
+        <div class="summary-member-name">${m}</div>
       </div>
-    `;
+      <div class="summary-amount">₹${memberTotals[m]}</div>
+    </div>`;
   });
 
-  html += `
-    <div class="section-label" style="margin-top:20px;">${year} Breakdown</div>
+  html += `<div class="section-label" style="margin-top:20px;">${year} Breakdown</div>
     <div class="table-wrapper">
       <div class="table-title">Month-wise Contributions</div>
       <table>
-        <tr>
-          <th>Member</th>
-          ${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}
-          <th>Total</th>
-        </tr>
-  `;
+        <tr><th>Member</th>${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}<th>Total</th></tr>`;
 
-  members.forEach(name=>{
+  members.forEach(name => {
     let rowTotal = 0;
     html += `<tr><td><b>${name}</b></td>`;
-    months.forEach(month=>{
-      const entry = data.find(d =>
-        d.name === name && d.month === month && d.year === year && d.paid
-      );
-      const amount = entry ? entry.amount : 0;
-      rowTotal += amount;
-      html += `<td>${amount || "-"}</td>`;
+    months.forEach(month => {
+      const entry = allData.find(d => d.name===name && d.month===month && d.year===year && d.paid);
+      const amt   = entry ? (entry.amount || 0) : 0;
+      rowTotal   += amt;
+      html += `<td>${amt || "-"}</td>`;
     });
     html += `<td><b>₹${rowTotal}</b></td></tr>`;
   });
 
   html += `<tr><td><b>Total</b></td>`;
-  months.forEach(m=>{ html += `<td><b>₹${monthTotals[m]}</b></td>`; });
-  html += `<td><b>₹${grandTotal}</b></td></tr>`;
-  html += `</table></div>`;
+  months.forEach(m => { html += `<td><b>₹${monthTotals[m]}</b></td>`; });
+  html += `<td><b>₹${grandTotal}</b></td></tr></table></div>`;
 
   document.getElementById("summaryPage").innerHTML = html;
 }
 
-
-// Track auth state separately so both can coordinate
-let authResolved = false;
-
+// ── Auth ────────────────────────────────────────────────
 onAuthStateChanged(auth, (user) => {
-  if (user) {
-    window.isOwner = true;
-    document.getElementById("loginDiv").style.display = "none";
-  } else {
-    window.isOwner = false;
-  }
-  authResolved = true;
-
-  // If data already loaded, re-render with correct owner state
-  if (initialLoaded && localData.length > 0) {
-    render(localData, window.isOwner);
-  }
+  isOwner = !!user;
+  document.getElementById("loginDiv").style.display = user ? "none" : "block";
+  // Re-render cards whenever auth state changes (login / logout)
+  if (allData.length > 0) renderAll();
 });
 
+// ── Firestore live listener ─────────────────────────────
 onSnapshot(collection(db, "fund"), (snap) => {
-  const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
-  window.latestData = data;
-
-  // Populate view month dropdown always
-  const months = [...new Set(data.map(d => d.month))];
-  document.getElementById("viewMonth").innerHTML =
-    months.map(m => `<option>${m}</option>`).join("");
-
-  if (!initialLoaded) {
-    // First load — wait for auth to resolve first, then r
+  allData = snap.docs.map(d => ({ id: d.id, ...d.d
