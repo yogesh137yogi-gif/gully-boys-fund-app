@@ -86,13 +86,22 @@ window.closeLogin=()=>{
  render(window.latestData,false);
 };
 
-window.login=()=>{
- const e=email.value,p=password.value;
- signInWithEmailAndPassword(auth,e,p)
-  .then(()=>closeLogin())
-  .catch(err=>alert(err.message));
-};
+window.login = () => {
+const e = email.value;
+const p = password.value;
 
+signInWithEmailAndPassword(auth, e, p)
+.then(() => {
+// ✅ ONLY hide popup
+document.getElementById("loginDiv").classList.add("hidden");
+
+```
+  // ❌ DO NOT touch isOwner here
+})
+.catch(err => alert(err.message));
+```
+
+};
 onAuthStateChanged(auth,(user)=>{
  window.isOwner=!!user;
  document.getElementById("modeTag").innerText=user?"Owner Mode":"Viewer Mode";
