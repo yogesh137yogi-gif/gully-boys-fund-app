@@ -103,10 +103,19 @@ document.getElementById("loginDiv").classList.add("hidden");
 
 };
 onAuthStateChanged(auth,(user)=>{
- window.isOwner=!!user;
- document.getElementById("modeTag").innerText=user?"Owner Mode":"Viewer Mode";
- render(window.latestData,window.isOwner);
+window.isOwner = !!user;
+
+document.getElementById("modeTag").innerText =
+user ? "Owner Mode" : "Viewer Mode";
+
+// 🔥 SHOW / HIDE ADMIN PANEL
+document.getElementById("adminActions").classList.toggle("hidden", !user);
+document.getElementById("btnLoginNav").classList.toggle("hidden", user);
+
+// 🔥 IMPORTANT: refresh UI
+render(window.latestData, window.isOwner);
 });
+
 
 function render(data,isOwner){
  const appDiv=document.getElementById("app");
