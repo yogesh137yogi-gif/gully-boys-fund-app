@@ -10,7 +10,28 @@
 <style>
 body { font-family: Arial; padding: 15px; background:#f5f5f5;}
 h2 { text-align:center; }
-.card { background:white; padding:10px; margin:10px 0; border-radius:10px; }
+.card {
+  background:white;
+  padding:15px;
+  margin:10px 0;
+  border-radius:16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+  .row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.badge {
+  background:#eee;
+  padding:3px 8px;
+  border-radius:10px;
+  font-size:12px;
+}
+
+.green { color:#1a7f37; font-weight:bold; }
+.red { color:#d11a2a; font-weight:bold; }
 input { padding:5px; width:80px; }
 button { padding:5px 10px; margin-top:5px; }
 .topbar { display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; }
@@ -61,6 +82,7 @@ canvas { background:white; border-radius:10px; margin-top:10px; }
 </div>
 
 <div id="app"></div>
+<div id="summaryPage"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
@@ -186,7 +208,93 @@ function render(data, isOwner) {
 
     appDiv.appendChild(div);
   });
+  renderSummary(data);
+
 }
+  function renderSummary(data){
+
+const year = Number(localStorage.getItem("year")) || new Date().getFullYear();
+const months = ["January","February","March","April","May","June",
+"July","August","September","October","November","December"];
+
+let memberTotals = {};
+let monthTotals = {};
+let grandTotal = 0;
+
+members.forEach(m=>{
+memberTotals[m] = 0;
+});
+
+months.forEach(m=>{
+monthTotals[m] = 0;
+});
+
+data.forEach(d=>{
+if(d.year === year && d.paid){
+memberTotals[d.name] += d.amount || 0;
+monthTotals[d.month] += d.amount || 0;
+grandTotal += d.amount || 0;
+}
+});
+
+let html = `
+
+  <div class="card">
+    <b>Overall Summary</b><br><br>
+    <div class="green" style="font-size:22px;">₹${grandTotal}</div>
+  </div>
+  `;
+
+members.forEach(m=>{
+html += `     <div class="card row">       <span>${m}</span>       <b>₹${memberTotals[m]}</b>     </div>`;
+});
+
+html += `<div class="card" style="overflow:auto;"> <b>${year} Breakdown</b><br><br>
+
+  <table border="0" style="width:100%; font-size:12px;">
+  <tr>
+    <th>Member</th>
+    ${months.map(m=>`<th>${m.substring(0,3)}</th>`).join("")}
+    <th>Total</th>
+  </tr>`;
+
+members.forEach(name=>{
+let rowTotal = 0;
+
+html += `<tr><td><b>${name}</b></td>`;
+
+months.forEach(month=>{
+  const entry = data.find(d =>
+    d.name === name &&
+    d.month === month &&
+    d.year === year &&
+    d.paid
+  );
+
+  const amount = entry ? entry.amount : 0;
+
+  rowTotal += amount;
+
+  html += `<td>${amount || "-"}</td>`;
+});
+
+html += `<td><b>₹${rowTotal}</b></td></tr>`;
+
+});
+
+html += `<tr><td><b>Total</b></td>`;
+
+months.forEach(m=>{
+html += `<td><b>₹${monthTotals[m]}</b></td>`;
+});
+
+html += `<td><b>₹${grandTotal}</b></td></tr>`;
+
+html += `</table></div>`;
+
+document.getElementById("summaryPage").innerHTML = html;
+}
+
 
 onSnapshot(collection(db, "fund"), (snap) => {
   const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
