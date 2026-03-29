@@ -69,12 +69,6 @@ canvas { background:white; border-radius:10px; margin-top:10px; }
   <button onclick="loadMonth()">View</button>
 </div>
 
-<br>
-
-<canvas id="monthlyChart"></canvas> <canvas id="yearlyChart"></canvas>
-
-<br>
-
 <div id="loginDiv">
   <input id="email" placeholder="Email"><br><br>
   <input id="password" type="password" placeholder="Password"><br><br>
@@ -104,7 +98,7 @@ const auth = getAuth(app);
 
 const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
-let monthlyChart, yearlyChart;
+//let monthlyChart, yearlyChart;
 
 function getCurrentMonth() {
   return new Date().toLocaleString('default', { month: 'long' });
@@ -157,7 +151,7 @@ function render(data, isOwner) {
   const filtered = data.filter(d => d.month === month && d.year === year);
 
   // 📊 Monthly chart
-  const names = filtered.map(m => m.name);
+ /* const names = filtered.map(m => m.name);
   const amounts = filtered.map(m => m.amount || 0);
 
   if(monthlyChart) monthlyChart.destroy();
@@ -167,10 +161,10 @@ function render(data, isOwner) {
       labels: names,
       datasets: [{ label: "Monthly", data: amounts }]
     }
-  });
+  });*/
 
   // 📊 Yearly totals
-  let yearlyTotals = {};
+  /*let yearlyTotals = {};
   data.forEach(d => {
     if(d.year === year){
       yearlyTotals[d.name] = (yearlyTotals[d.name] || 0) + (d.amount || 0);
@@ -184,7 +178,7 @@ function render(data, isOwner) {
       labels: Object.keys(yearlyTotals),
       datasets: [{ data: Object.values(yearlyTotals) }]
     }
-  });
+  });*/
 
   // Cards
   filtered.forEach(member => {
