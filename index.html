@@ -109,9 +109,44 @@ window.showPage = function(p){
   document.getElementById("monthlyPage").style.display = p==="monthly"?"block":"none";
   document.getElementById("summaryPage").style.display = p==="summary"?"block":"none";
 };
+  window.createMonth = async function(){
+
+const month = getMonth();
+const year = getYear();
+
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+
+const snapshot = await getDocs(collection(db,"fund"));
+
+const exists = snapshot.docs.some(d =>
+d.data().month === month && d.data().year === year
+);
+
+if(exists){
+alert("Month already exists");
+return;
+}
+
+for(let name of members){
+await addDoc(collection(db,"fund"), {
+name,
+month,
+year,
+amount: 0,
+paid: false
+});
+}
+
+alert("Month created successfully");
+};
+
 
 // 🔥 MAIN RENDER
 function render(data){
+
+  <div class="card">
+  <button onclick="createMonth()">Create Month</button>
+</div>
 
   const month = getMonth();
   const year = getYear();
@@ -212,34 +247,29 @@ onSnapshot(collection(db,"fund"), snap=>{
 });
 
 // 🔧 UPDATE
-window.updateAmount = async function(key, name, val){
+window.updateAmount = async function(id, val){
 
-const [n, m, y] = key.split("_");
+if(!id){
+alert("Create month first");
+return;
+}
 
-await setDoc(doc(db,"fund",key),{
-name:n,
-month:m,
-year:Number(y),
-amount:Number(val)
-}, { merge:true });
+await updateDoc(doc(db,"fund",id), {
+amount: Number(val)
+});
 };
-
-
 // 🔧 TOGGLE
-window.toggle = async function(key, current){
+window.toggle = async function(id, current){
 
-const [name, month, year] = key.split("_");
+if(!id){
+alert("Create month first");
+return;
+}
 
-await setDoc(doc(db,"fund",key),{
-name,
-month,
-year: Number(year),
+await updateDoc(doc(db,"fund",id), {
 paid: !current
-}, { merge:true });
+});
 };
-
-
-
 window.whatsapp = (name,amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
 };
