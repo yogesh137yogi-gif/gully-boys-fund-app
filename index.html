@@ -303,9 +303,30 @@ function startListen(){
   if (unsub) return;
   started = true;
   unsub = db.collection('fund').onSnapshot(snap => {
-    docs = {};
-    snap.forEach(d => { docs[d.id] = {id:d.id, ...d.data()}; });
-    render();
+    const wasEmpty   = Object.keys(docs).length === 0;
+    const existingIds = new Set(Object.keys(docs));
+    let   hasNew     = false;
+
+    snap.forEach(d => {
+      if(!existingIds.has(d.id)) hasNew = true;
+      const incoming = {id:d.id, ...d.data()};
+      // If owner is actively typing in this input, don't overwrite their value
+      if(isOwner && docs[d.id]){
+        const inp = document.getElementById('ai_'+d.id);
+        if(inp && document.activeElement === inp){
+          incoming.amount = docs[d.id].amount;
+        }
+      }
+      docs[d.id] = incoming;
+    });
+
+    if(wasEmpty || hasNew){
+      // First load OR new month created — full render
+      render();
+    } else {
+      // Existing data updated — just refresh stats quietly
+      updateStats();
+    }
   }, err => toast('❌ '+err.message,'err'));
 }
 
@@ -389,13 +410,22 @@ function renderCards(){
 
   wrap.innerHTML = h;
 
-  // Attach blur/enter listeners to amount inputs AFTER HTML is set
+  // Attach listeners AFTER HTML is set
   if(isOwner){
     list.forEach(d=>{
       const inp = document.getElementById('ai_'+d.id);
       if(!inp) return;
-      inp.addEventListener('blur', function(){ sAmt(d.id, this.value); });
-      inp.addEventListener('keydown', function(e){ if(e.key==='Enter') this.blur(); });
+      // Track original value to detect real changes
+      inp.dataset.orig = d.amount||0;
+      inp.addEventListener('blur', function(){
+        if(this.value !== this.dataset.orig){
+          this.dataset.orig = this.value;
+          sAmt(d.id, this.value);
+        }
+      });
+      inp.addEventListener('keydown', function(e){
+        if(e.key==='Enter'){ this.dataset.orig=this.value; this.blur(); }
+      });
     });
   }
 }
@@ -403,22 +433,36 @@ function renderCards(){
 // ── Save amount ───────────────────────────────────────
 function sAmt(id, val){
   const num = Number(val);
+  if(!docs[id] || docs[id].amount === num) return; // skip if unchanged
+  docs[id].amount = num; // update local cache immediately
   db.collection('fund').doc(id).update({amount:num})
-    .then(()=>{ if(docs[id]) docs[id].amount=num; toast('✓ Saved','ok'); })
+    .then(()=>{ toast('✓ Amount saved','ok'); })
     .catch(e=>toast('❌ '+e.message,'err'));
 }
 
 // ── Toggle paid ───────────────────────────────────────
 function tPaid(id){
-  const d      = docs[id]; if(!d) return;
-  const newP   = !d.paid;
-  const btn    = document.getElementById('bt_'+id);
-  const card   = btn ? btn.closest('.mcard') : null;
+  const d = docs[id]; if(!d) return;
+  const newP = !d.paid;
 
-  // Instant UI
+  // Save current amount input value BEFORE any DOM changes
+  const inp = document.getElementById('ai_'+id);
+  if(inp){
+    const currentVal = Number(inp.value);
+    if(docs[id].amount !== currentVal){
+      docs[id].amount = currentVal;
+      db.collection('fund').doc(id).update({amount:currentVal}).catch(()=>{});
+    }
+  }
+
+  // Update local cache
   d.paid = newP;
+
+  // Update ONLY the badge and button — no full re-render
+  const btn  = document.getElementById('bt_'+id);
+  const card = btn ? btn.closest('.mcard') : null;
   if(btn){
-    btn.className = 'btoggle '+(newP?'bunpaid':'bpaid');
+    btn.className   = 'btoggle '+(newP?'bunpaid':'bpaid');
     btn.textContent = newP?'Mark Unpaid':'Mark Paid';
   }
   if(card){
@@ -426,9 +470,27 @@ function tPaid(id){
     if(badge){ badge.className='badge '+(newP?'bp':'bu'); badge.textContent=newP?'✓ Paid':'✗ Unpaid'; }
   }
 
+  // Update stats row without rebuilding cards
+  updateStats();
+
+  // Save to Firestore
   db.collection('fund').doc(id).update({paid:newP})
-    .then(()=>{ toast(newP?'✓ Marked Paid':'✓ Marked Unpaid','ok'); renderCards(); })
+    .then(()=>toast(newP?'✓ Marked Paid':'✓ Marked Unpaid','ok'))
     .catch(e=>{ toast('❌ '+e.message,'err'); d.paid=!newP; renderCards(); });
+}
+
+// ── Update stats row only (no card rebuild) ───────────
+function updateStats(){
+  const list  = Object.values(docs).filter(d=>d.month===vMonth && d.year===vYear);
+  const total = list.filter(d=>d.paid).reduce((s,d)=>s+(d.amount||0),0);
+  const pc    = list.filter(d=>d.paid).length;
+  const uc    = list.length - pc;
+  const sl    = document.querySelector('#cardsWrap .slabel');
+  if(sl) sl.textContent = vMonth+' '+vYear+' · '+pc+'/'+list.length+' Paid';
+  const boxes = document.querySelectorAll('#cardsWrap .sval');
+  if(boxes[0]) boxes[0].textContent = '₹'+total;
+  if(boxes[1]) boxes[1].textContent = pc;
+  if(boxes[2]) boxes[2].textContent = uc;
 }
 
 // ── Summary ───────────────────────────────────────────
@@ -512,24 +574,42 @@ async function doCreate(){
   const yr  = Number(document.getElementById('cY').value);
   const btn = document.getElementById('cBtn');
 
-  if(Object.values(docs).some(d=>d.month===mo&&d.year===yr)){
-    toast('⚠️ Month already exists','err'); return;
+  if(!mo || !yr){
+    toast('⚠️ Select month and year','err'); return;
+  }
+
+  if(Object.values(docs).some(d=>d.month===mo && d.year===yr)){
+    toast('⚠️ '+mo+' '+yr+' already exists','err'); return;
   }
 
   btn.textContent='Creating...'; btn.disabled=true;
+
   try{
-    const batch = db.batch();
-    MEMBERS.forEach(name=>{
-      batch.set(db.collection('fund').doc(), {name,month:mo,year:yr,amount:DEF_AMT,paid:false});
-    });
-    await batch.commit();
-    vMonth = mo; vYear = yr;
+    // Use individual addDoc calls — most reliable across all Firebase SDK versions
+    const col = db.collection('fund');
+    for(let i=0; i<MEMBERS.length; i++){
+      await col.add({
+        name:    MEMBERS[i],
+        month:   mo,
+        year:    yr,
+        amount:  DEF_AMT,
+        paid:    false
+      });
+    }
+    // Switch view to newly created month
+    vMonth = mo;
+    vYear  = yr;
     document.getElementById('selM').value = mo;
     document.getElementById('selY').value = yr;
     switchTab('month');
-    toast(`✓ ${mo} ${yr} created`,'ok');
-  }catch(e){ toast('❌ '+e.message,'err'); }
-  btn.textContent='+ Create'; btn.disabled=false;
+    toast('✓ '+mo+' '+yr+' created!','ok');
+  } catch(e){
+    toast('❌ '+e.message,'err');
+    console.error('Create month error:',e);
+  }
+
+  btn.textContent='+ Create';
+  btn.disabled=false;
 }
 
 // ── Login ─────────────────────────────────────────────
