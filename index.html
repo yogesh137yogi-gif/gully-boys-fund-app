@@ -569,6 +569,10 @@ window.loadMonth = function() {
 
 const appDiv = document.getElementById("app");
 
+// Local state — single source of truth, Firestore only loads once
+let localData = [];
+let initialLoaded = false;
+
 function buildCard(member, isOwner) {
   const initials = member.name.substring(0, 2).toUpperCase();
   const isPaid = member.paid;
@@ -593,18 +597,63 @@ function buildCard(member, isOwner) {
       <div>
         <div class="amount-label">Amount</div>
         ${isOwner
-          ? `<input class="amount-input" value="${member.amount}" onblur="updateAmount('${member.id}', this.value)">`
+          ? `<input class="amount-input" type="number" inputmode="numeric" value="${member.amount}">`
           : `<div class="amount-value">₹${member.amount}</div>`
         }
       </div>
       ${isOwner
-        ? `<button class="btn-toggle-paid ${isPaid ? 'btn-toggle-unpaid' : ''}" onclick="toggle('${member.id}', ${member.paid})">
+        ? `<button class="btn-toggle-paid ${isPaid ? 'btn-toggle-unpaid' : ''}" data-toggle-id="${member.id}" data-paid="${member.paid}">
             ${isPaid ? 'Mark Unpaid' : 'Mark Paid'}
           </button>`
         : ''
       }
     </div>
   `;
+
+  // Attach events via addEventListener — no inline handlers
+  if (isOwner) {
+    const input = div.querySelector(".amount-input");
+    if (input) {
+      input.addEventListener("change", function() {
+        const val = Number(this.value);
+        // Update local state immediately
+        const entry = localData.find(d => d.id === member.id);
+        if (entry) entry.amount = val;
+        // Save to Firestore silently
+        updateDoc(doc(db, "fund", member.id), { amount: val });
+        renderSummary(localData);
+      });
+    }
+
+    const btn = div.querySelector("[data-toggle-id]");
+    if (btn) {
+      btn.addEventListener("click", function() {
+        const id = this.getAttribute("data-toggle-id");
+        const currentPaid = this.getAttribute("data-paid") === "true";
+        const newPaid = !currentPaid;
+
+        // Update local state immediately
+        const entry = localData.find(d => d.id === id);
+        if (entry) entry.paid = newPaid;
+
+        // Update UI immediately without waiting for Firestore
+        this.setAttribute("data-paid", newPaid);
+        this.className = `btn-toggle-paid ${newPaid ? 'btn-toggle-unpaid' : ''}`;
+        this.textContent = newPaid ? 'Mark Unpaid' : 'Mark Paid';
+
+        const badge = div.querySelector(".status-badge");
+        if (badge) {
+          badge.className = `status-badge ${newPaid ? 'status-paid' : 'status-unpaid'}`;
+          badge.textContent = newPaid ? '✓ Paid' : '✗ Unpaid';
+        }
+
+        // Save to Firestore silently
+        updateDoc(doc(db, "fund", id), { paid: newPaid });
+        renderSummary(localData);
+      });
+    }
+  }
+
   return div;
 }
 
@@ -613,53 +662,16 @@ function render(data, isOwner) {
   const year = Number(localStorage.getItem("year")) || getCurrentYear();
   const filtered = data.filter(d => d.month === month && d.year === year);
 
-  // First render — build everything from scratch
-  if (appDiv.children.length === 0) {
-    if (filtered.length > 0) {
-      const label = document.createElement("div");
-      label.className = "section-label";
-      label.textContent = `${month} ${year} — Members`;
-      appDiv.appendChild(label);
-    }
-    filtered.forEach(member => appDiv.appendChild(buildCard(member, isOwner)));
-    renderSummary(data);
-    return;
+  appDiv.innerHTML = "";
+
+  if (filtered.length > 0) {
+    const label = document.createElement("div");
+    label.className = "section-label";
+    label.textContent = `${month} ${year} — Members`;
+    appDiv.appendChild(label);
   }
 
-  // Subsequent renders — only patch cards that changed, skip focused inputs
-  filtered.forEach(member => {
-    const existing = appDiv.querySelector(`[data-id="${member.id}"]`);
-    const focusedInput = existing && existing.querySelector("input:focus");
-
-    if (!existing) {
-      appDiv.appendChild(buildCard(member, isOwner));
-      return;
-    }
-
-    // Update status badge
-    const badge = existing.querySelector(".status-badge");
-    if (badge) {
-      badge.className = `status-badge ${member.paid ? 'status-paid' : 'status-unpaid'}`;
-      badge.textContent = member.paid ? '✓ Paid' : '✗ Unpaid';
-    }
-
-    // Update amount only if input is NOT focused
-    if (!focusedInput) {
-      const amountVal = existing.querySelector(".amount-value");
-      const amountInp = existing.querySelector(".amount-input");
-      if (amountVal) amountVal.textContent = `₹${member.amount}`;
-      if (amountInp) amountInp.value = member.amount;
-    }
-
-    // Update toggle button
-    const btn = existing.querySelector(".btn-toggle-paid");
-    if (btn) {
-      btn.className = `btn-toggle-paid ${member.paid ? 'btn-toggle-unpaid' : ''}`;
-      btn.textContent = member.paid ? 'Mark Unpaid' : 'Mark Paid';
-      btn.setAttribute("onclick", `toggle('${member.id}', ${member.paid})`);
-    }
-  });
-
+  filtered.forEach(member => appDiv.appendChild(buildCard(member, isOwner)));
   renderSummary(data);
 }
 
@@ -742,11 +754,18 @@ function renderSummary(data){
 onSnapshot(collection(db, "fund"), (snap) => {
   const data = snap.docs.map(d => ({id:d.id, ...d.data()}));
   window.latestData = data;
-  render(data, window.isOwner || false);
 
+  // Populate view month dropdown always
   const months = [...new Set(data.map(d => d.month))];
   document.getElementById("viewMonth").innerHTML =
     months.map(m => `<option>${m}</option>`).join("");
+
+  // Only do full render on first load — after that local state handles UI
+  if (!initialLoaded) {
+    initialLoaded = true;
+    localData = data;
+    render(localData, window.isOwner || false);
+  }
 });
 
 window.login = function() {
@@ -764,21 +783,12 @@ onAuthStateChanged(auth, (user) => {
   } else {
     window.isOwner = false;
   }
-  // Re-render immediately with cached data so owner/viewer mode switches instantly
-  if (window.latestData) {
-    render(window.latestData, window.isOwner);
+  if (initialLoaded && localData.length > 0) {
+    render(localData, window.isOwner);
   }
 });
 
-window.toggle = async function(id, current){
-  const ref = doc(db, "fund", id);
-  await updateDoc(ref, { paid: !current });
-};
-
-window.updateAmount = async function(id, value){
-  const ref = doc(db, "fund", id);
-  await updateDoc(ref, { amount: Number(value) });
-};
+// toggle and updateAmount are now handled inside buildCard via addEventListener
 </script>
 
 </body>
