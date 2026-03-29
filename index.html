@@ -49,9 +49,7 @@ body { font-family: Arial; background:#f4f5f7; margin:0; }
   padding:10px;
   border-top:1px solid #ddd;
 }
-
 table { width:100%; font-size:12px; text-align:center; }
-td, th { padding:6px; }
 </style>
 
 </head>
@@ -60,7 +58,7 @@ td, th { padding:6px; }
 
 <div class="header">
   <span onclick="changeMonth(-1)">⬅</span>
-  <b id="monthDisplay">March 2026</b>
+  <b id="monthDisplay"></b>
   <span onclick="changeMonth(1)">➡</span>
 </div>
 
@@ -75,8 +73,7 @@ td, th { padding:6px; }
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-//import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
-  import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, setDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -87,10 +84,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🔐 TEMP OWNER MODE (STABLE)
-let isOwner = true;
+const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
 
-// 📅 MONTHS
 const months = ["January","February","March","April","May","June",
 "July","August","September","October","November","December"];
 
@@ -115,158 +110,125 @@ window.showPage = function(p){
   document.getElementById("summaryPage").style.display = p==="summary"?"block":"none";
 };
 
-// 🔹 MONTHLY
-function renderMonthly(data){
-  const div = document.getElementById("monthlyPage");
-  div.innerHTML = "";
+// 🔥 MAIN RENDER
+function render(data){
 
   const month = getMonth();
   const year = getYear();
 
   document.getElementById("monthDisplay").innerText = month + " " + year;
 
-  const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+  const monthlyDiv = document.getElementById("monthlyPage");
+  monthlyDiv.innerHTML = "";
 
   let total = 0;
 
   members.forEach(name=>{
-    const entry = data.find(d=>d.name===name && d.month===month && d.year===year);
 
-    const amount = entry ? entry.amount : 0;
-    const paid = entry ? entry.paid : false;
-    const id = entry ? entry.id : "";
+    const key = name + "_" + month + "_" + year;
 
-    total += amount;
+    const entry = data[key] || { amount:0, paid:false };
 
-    div.innerHTML += `
+    total += entry.amount;
+
+    monthlyDiv.innerHTML += `
     <div class="card">
       <div class="row">
         <b>${name}</b>
-        ${isOwner ? `<span onclick="toggle('${id}', ${paid}, '${name}')">${paid ? "✔":"❌"}</span>` : ""}
+        <span onclick="toggle('${key}', ${entry.paid})">
+          ${entry.paid ? "✔":"❌"}
+        </span>
       </div>
 
       <div class="row">
-        ₹ <input class="input" value="${amount}" 
-        onchange="updateAmount('${id}','${name}', this.value)">
-        ${!paid ? `<span onclick="whatsapp('${name}', ${amount})">💬</span>` : ""}
+        ₹ <input class="input" value="${entry.amount}"
+        onchange="updateAmount('${key}', '${name}', this.value)">
+        ${!entry.paid ? `<span onclick="whatsapp('${name}', ${entry.amount})">💬</span>` : ""}
       </div>
     </div>`;
   });
 
-  div.innerHTML = `
+  monthlyDiv.innerHTML = `
   <div class="card">
     <b>${month} ${year}</b><br>
     Collected: ₹${total}
-  </div>` + div.innerHTML;
+  </div>` + monthlyDiv.innerHTML;
+
+  renderSummary(data);
 }
 
-// 🔹 SUMMARY (FULL GRID)
+// 🔥 SUMMARY (unchanged style)
 function renderSummary(data){
   const div = document.getElementById("summaryPage");
   const year = getYear();
 
-  const members = ["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
-
   let total = 0;
   let memberTotals = {};
 
-  data.forEach(d=>{
+  Object.values(data).forEach(d=>{
     if(d.year===year && d.paid){
-      total += d.amount || 0;
+      total += d.amount;
       memberTotals[d.name]=(memberTotals[d.name]||0)+d.amount;
     }
   });
 
-  let html = `
-  <div class="card">
-    <b>Overall Summary</b><br><br>
-    Total Fund Collected<br>
-    <h2>₹${total}</h2>
-  </div>`;
+  let html = `<div class="card"><b>Overall Summary</b><h2>₹${total}</h2></div>`;
 
   members.forEach(m=>{
     html += `<div class="card row"><span>${m}</span><b>₹${memberTotals[m]||0}</b></div>`;
   });
 
-  html += `<div class="card"><b>${year} Breakdown</b><br><br><table>
-  <tr><th>Member</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}<th>Total</th></tr>`;
+  html += `<div class="card"><table>
+  <tr><th>Member</th>${months.map(m=>`<th>${m.slice(0,3)}</th>`).join("")}</tr>`;
 
   members.forEach(name=>{
-    let rowTotal=0;
     html+=`<tr><td>${name}</td>`;
-
     months.forEach(m=>{
-      const e=data.find(d=>d.name===name && d.month===m && d.year===year);
-      const amt=e?e.amount:0;
-      rowTotal+=amt;
+      const key=name+"_"+m+"_"+year;
+      const amt=data[key]?.amount || 0;
       html+=`<td>${amt||"-"}</td>`;
     });
-
-    html+=`<td><b>${rowTotal}</b></td></tr>`;
+    html+=`</tr>`;
   });
 
   html+=`</table></div>`;
 
-  div.innerHTML=html;
+  div.innerHTML = html;
 }
 
-// 🔄 DATA
+// 🔄 REALTIME
 onSnapshot(collection(db,"fund"), snap=>{
-  const data=snap.docs.map(d=>({id:d.id,...d.data()}));
-  renderMonthly(data);
-  renderSummary(data);
+  let map = {};
+  snap.docs.forEach(d=>{
+    const v=d.data();
+    const key=v.name+"_"+v.month+"_"+v.year;
+    map[key]=v;
+  });
+  render(map);
 });
 
-// ✏️ UPDATE
-window.updateAmount = async function(id, name, val){
+// 🔧 UPDATE
+window.updateAmount = async function(key,name,val){
+  const [n,m,y]=key.split("_");
 
-const month = getMonth();
-const year = getYear();
-
-if(id){
-await updateDoc(doc(db,"fund",id), {
-amount: Number(val)
-});
-} else {
-// create once, then UI will refresh with id
-await addDoc(collection(db,"fund"), {
-name,
-month,
-year,
-amount: Number(val),
-paid: false
-});
-}
+  await setDoc(doc(db,"fund",key),{
+    name:n, month:m, year:Number(y),
+    amount:Number(val),
+    paid:false
+  });
 };
 
+// 🔧 TOGGLE
+window.toggle = async function(key,current){
+  const [n,m,y]=key.split("_");
 
-
-// ✔ TOGGLE (FIXED)
-window.toggle = async function(id, current, name){
-
-const month = getMonth();
-const year = getYear();
-
-if(id){
-// ✅ update existing ONLY
-await updateDoc(doc(db,"fund",id), {
-paid: !current
-});
-} else {
-// ✅ create new record ONCE
-await addDoc(collection(db,"fund"), {
-name,
-month,
-year,
-amount: 0,
-paid: true
-});
-}
+  await setDoc(doc(db,"fund",key),{
+    name:n, month:m, year:Number(y),
+    amount:0,
+    paid:!current
+  }, {merge:true});
 };
 
-
-
-// 💬
 window.whatsapp = (name,amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
 };
