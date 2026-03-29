@@ -39,6 +39,22 @@ td:first-child,th:first-child{text-align:left;}
   <button onclick="showLogin()">Login</button>
 </header><div class="container">
   <h3 id="currentDisplayTitle"></h3>
+  <div id="adminPanel" class="card hidden">
+  <b>Create Month</b><br><br>
+
+  <select id="monthSelect">
+    <option>January</option><option>February</option><option>March</option>
+    <option>April</option><option>May</option><option>June</option>
+    <option>July</option><option>August</option><option>September</option>
+    <option>October</option><option>November</option><option>December</option>
+  </select>
+
+  <input id="yearInput" type="number" value="2026" style="margin-left:10px;width:80px">
+
+<br><br> <button onclick="createMonth()">Create Month</button>
+
+</div>
+
   <div id="collectedStat"></div>  <div id="app"></div>
   <div id="summaryPage" class="hidden"></div>
 </div><div id="loginDiv" class="hidden">
@@ -51,8 +67,9 @@ td:first-child,th:first-child{text-align:left;}
   <button class="nav-item" onclick="switchTab('summary')">Summary</button>
 </nav><script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+//import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+  import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
  apiKey:"AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -65,6 +82,36 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 const members=["Loka","Balu","Venky","Raju","Suresh","Mohan","Yogi"];
+
+window.createMonth = async function(){
+
+const month = document.getElementById("monthSelect").value;
+const year = Number(document.getElementById("yearInput").value);
+
+const snapshot = await getDocs(collection(db,"fund"));
+
+const exists = snapshot.docs.some(d =>
+d.data().month === month && d.data().year === year
+);
+
+if(exists){
+alert("Month already exists!");
+return;
+}
+
+for(let name of members){
+await addDoc(collection(db,"fund"),{
+name,
+month,
+year,
+amount:0,
+paid:false
+});
+}
+
+alert("Month created successfully!");
+};
+
 
 window.latestData=[];
 window.isOwner=false;
@@ -108,13 +155,12 @@ window.isOwner = !!user;
 document.getElementById("modeTag").innerText =
 user ? "Owner Mode" : "Viewer Mode";
 
-// 🔥 SHOW / HIDE ADMIN PANEL
-document.getElementById("adminActions").classList.toggle("hidden", !user);
-document.getElementById("btnLoginNav").classList.toggle("hidden", user);
+// ✅ SHOW CREATE MONTH PANEL
+document.getElementById("adminPanel").classList.toggle("hidden", !user);
 
-// 🔥 IMPORTANT: refresh UI
 render(window.latestData, window.isOwner);
 });
+
 
 
 function render(data,isOwner){
