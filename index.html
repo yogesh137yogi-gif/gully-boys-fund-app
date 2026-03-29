@@ -614,20 +614,27 @@ function buildCard(member, isOwner) {
   if (isOwner) {
     const input = div.querySelector(".amount-input");
     if (input) {
-      input.addEventListener("change", function() {
-        const val = Number(this.value);
-        // Update local state immediately
+      // Save on both blur and Enter key — most reliable on mobile
+      async function saveAmount() {
+        const val = Number(input.value);
         const entry = localData.find(d => d.id === member.id);
         if (entry) entry.amount = val;
-        // Save to Firestore silently
-        updateDoc(doc(db, "fund", member.id), { amount: val });
         renderSummary(localData);
+        try {
+          await updateDoc(doc(db, "fund", member.id), { amount: val });
+        } catch(e) {
+          alert("Save failed. Check your connection.");
+        }
+      }
+      input.addEventListener("blur", saveAmount);
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") { this.blur(); }
       });
     }
 
     const btn = div.querySelector("[data-toggle-id]");
     if (btn) {
-      btn.addEventListener("click", function() {
+      btn.addEventListener("click", async function() {
         const id = this.getAttribute("data-toggle-id");
         const currentPaid = this.getAttribute("data-paid") === "true";
         const newPaid = !currentPaid;
@@ -647,9 +654,14 @@ function buildCard(member, isOwner) {
           badge.textContent = newPaid ? '✓ Paid' : '✗ Unpaid';
         }
 
-        // Save to Firestore silently
-        updateDoc(doc(db, "fund", id), { paid: newPaid });
         renderSummary(localData);
+
+        // Save to Firestore
+        try {
+          await updateDoc(doc(db, "fund", id), { paid: newPaid });
+        } catch(e) {
+          alert("Save failed. Check your connection.");
+        }
       });
     }
   }
@@ -760,36 +772,15 @@ onSnapshot(collection(db, "fund"), (snap) => {
   document.getElementById("viewMonth").innerHTML =
     months.map(m => `<option>${m}</option>`).join("");
 
-  // Only do full render on first load — after that local state handles UI
   if (!initialLoaded) {
+    // First load — set local state and render
     initialLoaded = true;
     localData = data;
     render(localData, window.isOwner || false);
-  }
-});
-
-window.login = function() {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("password").value;
-
-  signInWithEmailAndPassword(auth, email, pass)
-    .catch(() => alert("Login failed"));
-};
-
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    window.isOwner = true;
-    document.getElementById("loginDiv").style.display = "none";
   } else {
-    window.isOwner = false;
-  }
-  if (initialLoaded && localData.length > 0) {
-    render(localData, window.isOwner);
-  }
-});
-
-// toggle and updateAmount are now handled inside buildCard via addEventListener
-</script>
-
-</body>
-</html>
+    // After first load — only sync NEW records from Firestore (e.g. newly created months)
+    // Don't overwrite existing records (that would undo local changes not yet confirmed)
+    const existingIds = new Set(localData.map(d => d.id));
+    const newRecords = data.filter(d => !existingIds.has(d.id));
+    if (newRecords.length > 0) {
+      localData
