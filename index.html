@@ -73,7 +73,8 @@ table { width:100%; font-size:12px; text-align:center; }
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot, setDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+//import { getFirestore, collection, onSnapshot, setDoc, doc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, setDoc, doc, getDocs, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5DjcZ52k6RgC_e9EtAQTE97iQOqxm2mk",
@@ -144,57 +145,55 @@ alert("Month created successfully");
 // 🔥 MAIN RENDER
 function render(data){
 
-  <div class="card">
-  <button onclick="createMonth()">Create Month</button>
-</div>
+const month = getMonth();
+const year = getYear();
 
-  const month = getMonth();
-  const year = getYear();
+document.getElementById("monthDisplay").innerText = month + " " + year;
 
-  document.getElementById("monthDisplay").innerText = month + " " + year;
+const monthlyDiv = document.getElementById("monthlyPage");
+monthlyDiv.innerHTML = `     <div class="card">       <button onclick="createMonth()">Create Month</button>     </div>
+  `;
 
-  const monthlyDiv = document.getElementById("monthlyPage");
-  monthlyDiv.innerHTML = "";
+let total = 0;
 
-  let total = 0;
+members.forEach(name=>{
 
-  members.forEach(name=>{
+const key = name + "_" + month + "_" + year;
 
-    const key = name + "_" + month + "_" + year;
-
-    const entry = data[key] || {};
-
+const entry = data[key] || {};
 const amount = entry.amount ?? 0;
 const paid = entry.paid ?? false;
 
+total += amount;
 
-    total += entry.amount;
+monthlyDiv.innerHTML += `
+<div class="card">
+  <div class="row">
+    <b>${name}</b>
+    <span onclick="toggle('${key}', ${paid})">
+      ${paid ? "✔":"❌"}
+    </span>
+  </div>
 
-    monthlyDiv.innerHTML += `
-    <div class="card">
-      <div class="row">
-        <b>${name}</b>
-        <span onclick="toggle('${key}', ${paid})">
-          ${entry.paid ? "✔":"❌"}
-        </span>
-      </div>
+  <div class="row">
+    ₹ <input class="input" value="${amount}"
+    onchange="updateAmount('${key}', this.value)">
+    ${!paid ? `<span onclick="whatsapp('${name}', ${amount})">💬</span>` : ""}
+  </div>
+</div>`;
 
-      <div class="row">
-        ₹ <input class="input" value="${entry.amount}"
-        onchange="updateAmount('${key}', '${name}', this.value)">
-        ${!entry.paid ? `<span onclick="whatsapp('${name}', ${entry.amount})">💬</span>` : ""}
-      </div>
-    </div>`;
-  });
+});
 
-  monthlyDiv.innerHTML = `
+monthlyDiv.innerHTML = `
+
   <div class="card">
     <b>${month} ${year}</b><br>
     Collected: ₹${total}
   </div>` + monthlyDiv.innerHTML;
 
-  renderSummary(data);
+renderSummary(data);
 }
+
 
 // 🔥 SUMMARY (unchanged style)
 function renderSummary(data){
@@ -249,27 +248,19 @@ onSnapshot(collection(db,"fund"), snap=>{
 // 🔧 UPDATE
 window.updateAmount = async function(id, val){
 
-if(!id){
-alert("Create month first");
-return;
-}
-
-await updateDoc(doc(db,"fund",id), {
+await setDoc(doc(db,"fund",id), {
 amount: Number(val)
-});
+}, { merge:true });
 };
+
 // 🔧 TOGGLE
 window.toggle = async function(id, current){
 
-if(!id){
-alert("Create month first");
-return;
-}
-
-await updateDoc(doc(db,"fund",id), {
+await setDoc(doc(db,"fund",id), {
 paid: !current
-});
+}, { merge:true });
 };
+
 window.whatsapp = (name,amount)=>{
   window.open("https://wa.me/?text="+encodeURIComponent(`Hi ${name}, please pay ₹${amount}`));
 };
