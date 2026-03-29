@@ -127,7 +127,11 @@ function render(data){
 
     const key = name + "_" + month + "_" + year;
 
-    const entry = data[key] || { amount:0, paid:false };
+    const entry = data[key] || {};
+
+const amount = entry.amount ?? 0;
+const paid = entry.paid ?? false;
+
 
     total += entry.amount;
 
@@ -135,7 +139,7 @@ function render(data){
     <div class="card">
       <div class="row">
         <b>${name}</b>
-        <span onclick="toggle('${key}', ${entry.paid})">
+        <span onclick="toggle('${key}', ${paid})">
           ${entry.paid ? "✔":"❌"}
         </span>
       </div>
@@ -208,31 +212,32 @@ onSnapshot(collection(db,"fund"), snap=>{
 });
 
 // 🔧 UPDATE
-window.updateAmount = async function(key,name,val){
+window.updateAmount = async function(key, name, val){
 
-const [n,m,y]=key.split("_");
+const [n, m, y] = key.split("_");
 
 await setDoc(doc(db,"fund",key),{
 name:n,
 month:m,
 year:Number(y),
 amount:Number(val)
-}, {merge:true}); // 🔥 IMPORTANT
+}, { merge:true });
 };
 
 
 // 🔧 TOGGLE
-window.toggle = async function(key,current){
+window.toggle = async function(key, current){
 
-const [n,m,y]=key.split("_");
+const [name, month, year] = key.split("_");
 
 await setDoc(doc(db,"fund",key),{
-name:n,
-month:m,
-year:Number(y),
+name,
+month,
+year: Number(year),
 paid: !current
-}, {merge:true}); // 🔥 IMPORTANT
+}, { merge:true });
 };
+
 
 
 window.whatsapp = (name,amount)=>{
