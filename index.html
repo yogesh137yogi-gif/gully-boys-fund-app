@@ -397,7 +397,10 @@ function renderCards(){
         <div>
           <div class="alabel">Amount</div>
           ${isOwner
-            ? `<input class="ainput" type="number" inputmode="numeric" value="${d.amount||0}" id="ai_${d.id}">`
+            ? `<div style="display:flex;gap:8px;align-items:center;">
+                <input class="ainput" type="number" inputmode="numeric" value="${d.amount||0}" id="ai_${d.id}" style="flex:1;">
+                <button onclick="sAmt('${d.id}')" style="padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a0c10;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0;">Save</button>
+              </div>`
             : `<div class="aview">₹${d.amount||0}</div>`}
         </div>
         ${isOwner?`
@@ -410,50 +413,38 @@ function renderCards(){
 
   wrap.innerHTML = h;
 
-  // Attach listeners AFTER HTML is set
-  if(isOwner){
-    list.forEach(d=>{
-      const inp = document.getElementById('ai_'+d.id);
-      if(!inp) return;
-      // Track original value to detect real changes
-      inp.dataset.orig = d.amount||0;
-      inp.addEventListener('blur', function(){
-        if(this.value !== this.dataset.orig){
-          this.dataset.orig = this.value;
-          sAmt(d.id, this.value);
-        }
-      });
-      inp.addEventListener('keydown', function(e){
-        if(e.key==='Enter'){ this.dataset.orig=this.value; this.blur(); }
-      });
-    });
-  }
+  // No blur listeners needed — Save button handles it
 }
 
 // ── Save amount ───────────────────────────────────────
-function sAmt(id, val){
-  const num = Number(val);
-  if(!docs[id] || docs[id].amount === num) return; // skip if unchanged
-  docs[id].amount = num; // update local cache immediately
-  db.collection('fund').doc(id).update({amount:num})
-    .then(()=>{ toast('✓ Amount saved','ok'); })
-    .catch(e=>toast('❌ '+e.message,'err'));
+function sAmt(id){
+  const inp = document.getElementById('ai_'+id);
+  if(!inp) return;
+  const num = Number(inp.value);
+  if(isNaN(num) || num < 0){ toast('⚠️ Enter a valid amount','err'); return; }
+  
+  // Update local cache
+  if(docs[id]) docs[id].amount = num;
+  
+  // Visual feedback on button
+  const btn = inp.nextElementSibling;
+  if(btn){ btn.textContent='Saving...'; btn.disabled=true; }
+  
+  db.collection('fund').doc(id).update({amount: num})
+    .then(()=>{
+      toast('✓ Amount saved','ok');
+      if(btn){ btn.textContent='Save'; btn.disabled=false; }
+    })
+    .catch(e=>{
+      toast('❌ Save failed: '+e.message,'err');
+      if(btn){ btn.textContent='Save'; btn.disabled=false; }
+    });
 }
 
 // ── Toggle paid ───────────────────────────────────────
 function tPaid(id){
   const d = docs[id]; if(!d) return;
   const newP = !d.paid;
-
-  // Save current amount input value BEFORE any DOM changes
-  const inp = document.getElementById('ai_'+id);
-  if(inp){
-    const currentVal = Number(inp.value);
-    if(docs[id].amount !== currentVal){
-      docs[id].amount = currentVal;
-      db.collection('fund').doc(id).update({amount:currentVal}).catch(()=>{});
-    }
-  }
 
   // Update local cache
   d.paid = newP;
@@ -585,17 +576,17 @@ async function doCreate(){
   btn.textContent='Creating...'; btn.disabled=true;
 
   try{
-    // Use individual addDoc calls — most reliable across all Firebase SDK versions
+    // Use Promise.all — all 7 writes fire simultaneously, much faster and reliable
     const col = db.collection('fund');
-    for(let i=0; i<MEMBERS.length; i++){
-      await col.add({
-        name:    MEMBERS[i],
-        month:   mo,
-        year:    yr,
-        amount:  DEF_AMT,
-        paid:    false
-      });
-    }
+    await Promise.all(
+      MEMBERS.map(name => col.add({
+        name:   name,
+        month:  mo,
+        year:   yr,
+        amount: DEF_AMT,
+        paid:   false
+      }))
+    );
     // Switch view to newly created month
     vMonth = mo;
     vYear  = yr;
@@ -604,7 +595,7 @@ async function doCreate(){
     switchTab('month');
     toast('✓ '+mo+' '+yr+' created!','ok');
   } catch(e){
-    toast('❌ '+e.message,'err');
+    toast('❌ Create failed: '+e.message,'err');
     console.error('Create month error:',e);
   }
 
