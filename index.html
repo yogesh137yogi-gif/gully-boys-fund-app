@@ -358,15 +358,17 @@ function render(){
 // ── Render cards ──────────────────────────────────────
 function renderCards(){
   const wrap = document.getElementById('cardsWrap');
+  wrap.innerHTML = '';
   const list = Object.values(docs).filter(d=>d.month===vMonth && d.year===vYear);
   list.sort((a,b)=>MEMBERS.indexOf(a.name)-MEMBERS.indexOf(b.name));
 
   if(!list.length){
-    wrap.innerHTML = `<div class="empty fi">
-      <div class="empty-i">📭</div>
-      <div class="empty-t">No data for ${vMonth} ${vYear}</div>
-      <div class="empty-s">${isOwner?'Create this month above.':'Ask owner to create this month.'}</div>
-    </div>`;
+    const empty = document.createElement('div');
+    empty.className = 'empty fi';
+    empty.innerHTML = '<div class="empty-i">📭</div>'
+      + '<div class="empty-t">No data for '+vMonth+' '+vYear+'</div>'
+      + '<div class="empty-s">'+(isOwner?'Create this month above.':'Ask owner to create this month.')+'</div>';
+    wrap.appendChild(empty);
     return;
   }
 
@@ -374,101 +376,135 @@ function renderCards(){
   const paidCnt   = list.filter(d=>d.paid).length;
   const unpaidCnt = list.length - paidCnt;
 
-  let h = `
-  <div class="slabel">${vMonth} ${vYear} · ${paidCnt}/${list.length} Paid</div>
-  <div class="srow fi">
-    <div class="sbox"><div class="sval">₹${total}</div><div class="slbl">Collected</div></div>
-    <div class="sbox"><div class="sval">${paidCnt}</div><div class="slbl">Paid</div></div>
-    <div class="sbox"><div class="sval">${unpaidCnt}</div><div class="slbl">Pending</div></div>
-  </div>`;
+  // Stats row
+  const statsRow = document.createElement('div');
+  statsRow.innerHTML = '<div class="slabel" id="statsLabel">'+vMonth+' '+vYear+' · '+paidCnt+'/'+list.length+' Paid</div>'
+    + '<div class="srow fi">'
+    + '<div class="sbox"><div class="sval" id="sv0">₹'+total+'</div><div class="slbl">Collected</div></div>'
+    + '<div class="sbox"><div class="sval" id="sv1">'+paidCnt+'</div><div class="slbl">Paid</div></div>'
+    + '<div class="sbox"><div class="sval" id="sv2">'+unpaidCnt+'</div><div class="slbl">Pending</div></div>'
+    + '</div>';
+  wrap.appendChild(statsRow);
 
-  list.forEach(d=>{
+  // Member cards — built with createElement, events via addEventListener
+  list.forEach(function(d){
     const ini  = d.name.substring(0,2).toUpperCase();
     const paid = d.paid;
-    h += `<div class="mcard fi">
-      <div class="mcard-top">
-        <div class="mcard-left">
-          <div class="av">${ini}</div>
-          <div><div class="mname">${d.name}</div><div class="mperiod">${d.month} ${d.year}</div></div>
-        </div>
-        <span class="badge ${paid?'bp':'bu'}">${paid?'✓ Paid':'✗ Unpaid'}</span>
-      </div>
-      <div class="mcard-body">
-        <div>
-          <div class="alabel">Amount</div>
-          ${isOwner
-            ? `<div style="display:flex;gap:8px;align-items:center;">
-                <input class="ainput" type="number" inputmode="numeric" value="${d.amount||0}" id="ai_${d.id}" style="flex:1;">
-                <button onclick="sAmt('${d.id}')" style="padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a0c10;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0;">Save</button>
-              </div>`
-            : `<div class="aview">₹${d.amount||0}</div>`}
-        </div>
-        ${isOwner?`
-        <button class="btoggle ${paid?'bunpaid':'bpaid'}" id="bt_${d.id}" onclick="tPaid('${d.id}')">
-          ${paid?'Mark Unpaid':'Mark Paid'}
-        </button>`:''}
-      </div>
-    </div>`;
+
+    // Card
+    const card = document.createElement('div');
+    card.className = 'mcard fi';
+    card.setAttribute('data-id', d.id);
+
+    // Top row
+    const top = document.createElement('div');
+    top.className = 'mcard-top';
+    top.innerHTML = '<div class="mcard-left">'
+      + '<div class="av">'+ini+'</div>'
+      + '<div><div class="mname">'+d.name+'</div><div class="mperiod">'+d.month+' '+d.year+'</div></div>'
+      + '</div>'
+      + '<span class="badge '+(paid?'bp':'bu')+'" id="bdg_'+d.id+'">'+(paid?'✓ Paid':'✗ Unpaid')+'</span>';
+    card.appendChild(top);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'mcard-body';
+
+    // Amount section
+    const amtWrap = document.createElement('div');
+    const amtLabel = document.createElement('div');
+    amtLabel.className = 'alabel';
+    amtLabel.textContent = 'Amount';
+    amtWrap.appendChild(amtLabel);
+
+    if(isOwner){
+      // Input + Save button row
+      const inputRow = document.createElement('div');
+      inputRow.style.cssText = 'display:flex;gap:8px;align-items:center;';
+
+      const inp = document.createElement('input');
+      inp.className = 'ainput';
+      inp.type = 'number';
+      inp.setAttribute('inputmode','numeric');
+      inp.value = d.amount || 0;
+      inp.id = 'ai_'+d.id;
+      inp.style.flex = '1';
+      inputRow.appendChild(inp);
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = 'Save';
+      saveBtn.style.cssText = 'padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,#f5c842,#e8943a);color:#0a0c10;font-family:Nunito,sans-serif;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0;';
+      saveBtn.addEventListener('click', function(){
+        const val = Number(inp.value);
+        if(isNaN(val)||val<0){toast('⚠️ Enter valid amount','err');return;}
+        if(docs[d.id]) docs[d.id].amount = val;
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+        db.collection('fund').doc(d.id).update({amount:val})
+          .then(function(){
+            toast('✓ Amount saved','ok');
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = false;
+          })
+          .catch(function(e){
+            toast('❌ '+e.message,'err');
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = false;
+          });
+      });
+      inputRow.appendChild(saveBtn);
+      amtWrap.appendChild(inputRow);
+
+      // Mark Paid/Unpaid button
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btoggle '+(paid?'bunpaid':'bpaid');
+      toggleBtn.id = 'bt_'+d.id;
+      toggleBtn.textContent = paid?'Mark Unpaid':'Mark Paid';
+      toggleBtn.addEventListener('click', function(){
+        const newPaid = !(docs[d.id]?docs[d.id].paid:paid);
+        if(docs[d.id]) docs[d.id].paid = newPaid;
+
+        // Update badge
+        const badge = document.getElementById('bdg_'+d.id);
+        if(badge){ badge.className='badge '+(newPaid?'bp':'bu'); badge.textContent=newPaid?'✓ Paid':'✗ Unpaid'; }
+
+        // Update button
+        toggleBtn.className = 'btoggle '+(newPaid?'bunpaid':'bpaid');
+        toggleBtn.textContent = newPaid?'Mark Unpaid':'Mark Paid';
+
+        // Update stats
+        updateStats();
+
+        // Save to Firestore
+        db.collection('fund').doc(d.id).update({paid:newPaid})
+          .then(function(){ toast(newPaid?'✓ Marked Paid':'✓ Marked Unpaid','ok'); })
+          .catch(function(e){
+            toast('❌ '+e.message,'err');
+            if(docs[d.id]) docs[d.id].paid = !newPaid;
+            renderCards();
+          });
+      });
+
+      body.appendChild(amtWrap);
+      body.appendChild(toggleBtn);
+
+    } else {
+      // Viewer — read only
+      const amtView = document.createElement('div');
+      amtView.className = 'aview';
+      amtView.textContent = '₹'+(d.amount||0);
+      amtWrap.appendChild(amtView);
+      body.appendChild(amtWrap);
+    }
+
+    card.appendChild(body);
+    wrap.appendChild(card);
   });
-
-  wrap.innerHTML = h;
-
-  // No blur listeners needed — Save button handles it
 }
 
-// ── Save amount ───────────────────────────────────────
-function sAmt(id){
-  const inp = document.getElementById('ai_'+id);
-  if(!inp) return;
-  const num = Number(inp.value);
-  if(isNaN(num) || num < 0){ toast('⚠️ Enter a valid amount','err'); return; }
-  
-  // Update local cache
-  if(docs[id]) docs[id].amount = num;
-  
-  // Visual feedback on button
-  const btn = inp.nextElementSibling;
-  if(btn){ btn.textContent='Saving...'; btn.disabled=true; }
-  
-  db.collection('fund').doc(id).update({amount: num})
-    .then(()=>{
-      toast('✓ Amount saved','ok');
-      if(btn){ btn.textContent='Save'; btn.disabled=false; }
-    })
-    .catch(e=>{
-      toast('❌ Save failed: '+e.message,'err');
-      if(btn){ btn.textContent='Save'; btn.disabled=false; }
-    });
-}
+// sAmt is now inline inside renderCards addEventListener
 
-// ── Toggle paid ───────────────────────────────────────
-function tPaid(id){
-  const d = docs[id]; if(!d) return;
-  const newP = !d.paid;
-
-  // Update local cache
-  d.paid = newP;
-
-  // Update ONLY the badge and button — no full re-render
-  const btn  = document.getElementById('bt_'+id);
-  const card = btn ? btn.closest('.mcard') : null;
-  if(btn){
-    btn.className   = 'btoggle '+(newP?'bunpaid':'bpaid');
-    btn.textContent = newP?'Mark Unpaid':'Mark Paid';
-  }
-  if(card){
-    const badge = card.querySelector('.badge');
-    if(badge){ badge.className='badge '+(newP?'bp':'bu'); badge.textContent=newP?'✓ Paid':'✗ Unpaid'; }
-  }
-
-  // Update stats row without rebuilding cards
-  updateStats();
-
-  // Save to Firestore
-  db.collection('fund').doc(id).update({paid:newP})
-    .then(()=>toast(newP?'✓ Marked Paid':'✓ Marked Unpaid','ok'))
-    .catch(e=>{ toast('❌ '+e.message,'err'); d.paid=!newP; renderCards(); });
-}
+// tPaid is now inline inside renderCards addEventListener
 
 // ── Update stats row only (no card rebuild) ───────────
 function updateStats(){
