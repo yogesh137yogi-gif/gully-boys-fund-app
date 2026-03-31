@@ -778,29 +778,21 @@ function renderSummary(){
 function renderPills(){
   const wrap = document.getElementById('pillsWrap');
   if(!wrap) return;
-  // Only show in monthly tab
   wrap.style.display = tab==='month' ? 'flex' : 'none';
   wrap.innerHTML = '';
-  // Get months that exist in Firestore for this year
-  const existing = MONTHS.filter(m => Object.values(docs).some(d=>d.month===m && d.year===vYear));
-  if(existing.length === 0){
-    // No months yet — show all 12 as options
-    MONTHS.forEach(function(m){
-      const pill = document.createElement('div');
-      pill.className = 'pill' + (m===vMonth?' active':'');
-      pill.textContent = m.substring(0,3);
-      pill.addEventListener('click', function(){ vMonth=m; renderPills(); renderCards(); });
-      wrap.appendChild(pill);
-    });
-    return;
-  }
-  existing.forEach(function(m){
+  const existing = MONTHS.filter(function(m){
+    return Object.values(docs).some(function(d){ return d.month===m && d.year===vYear; });
+  });
+  const list = existing.length > 0 ? existing : MONTHS;
+  list.forEach(function(mo){
     const pill = document.createElement('div');
-    pill.className = 'pill' + (m===vMonth?' active':'');
-    pill.textContent = m.substring(0,3);
+    pill.className = 'pill' + (mo===vMonth?' active':'');
+    pill.textContent = mo.substring(0,3);
+    // Use data attribute to avoid closure issue
+    pill.setAttribute('data-month', mo);
     pill.addEventListener('click', function(){
-      vMonth = m;
-      document.getElementById('selM').value = m;
+      vMonth = this.getAttribute('data-month');
+      document.getElementById('selM').value = vMonth;
       renderPills();
       renderCards();
     });
@@ -825,49 +817,37 @@ function goView(){
 
 // ── WhatsApp Share — Monthly ──────────────────────────
 function shareMonthly(list){
-  const paid   = list.filter(d=>d.paid);
-  const total  = paid.reduce(function(s,d){return s+(d.amount||0);},0);
-  let msg = '💰 *GULLY BOYS FUND*
-';
-  msg    += '📅 *'+vMonth+' '+vYear+'*
-';
-  msg    += '─────────────────
-';
+  var paid  = list.filter(function(d){return d.paid;});
+  var total = paid.reduce(function(s,d){return s+(d.amount||0);},0);
+  var nl    = '\n';
+  var msg   = '💰 *GULLY BOYS FUND*' + nl;
+  msg      += '📅 *'+vMonth+' '+vYear+'*' + nl;
+  msg      += '─────────────────' + nl;
   list.forEach(function(d){
-    msg += (d.paid ? '✅ ' : '❌ ') + d.name + (d.paid ? ' — ₹'+d.amount : ' — Pending') + '
-';
+    msg += (d.paid ? '✅ ' : '❌ ') + d.name + (d.paid ? ' — ₹'+(d.amount||0) : ' — Pending') + nl;
   });
-  msg += '─────────────────
-';
-  msg += '💵 *Total: ₹'+total+'*
-';
+  msg += '─────────────────' + nl;
+  msg += '💵 *Total: ₹'+total+'*' + nl;
   msg += '👥 '+paid.length+'/'+list.length+' Paid';
-  const url = 'https://wa.me/?text='+encodeURIComponent(msg);
-  window.open(url,'_blank');
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ── WhatsApp Share — Yearly ───────────────────────────
 function shareYearly(grand, mT, mMo, actMo){
-  const sorted = [...MEMBERS].sort(function(a,b){return mT[b]-mT[a];});
-  const medals = ['🏆','🥈','🥉'];
-  let msg = '💰 *GULLY BOYS FUND*
-';
-  msg    += '📅 *'+vYear+' — Year Summary*
-';
-  msg    += '─────────────────
-';
+  var sorted = MEMBERS.slice().sort(function(a,b){return mT[b]-mT[a];});
+  var medals = ['🏆','🥈','🥉'];
+  var nl     = '\n';
+  var msg    = '💰 *GULLY BOYS FUND*' + nl;
+  msg       += '📅 *'+vYear+' — Year Summary*' + nl;
+  msg       += '─────────────────' + nl;
   sorted.forEach(function(m, i){
-    const icon = medals[i] || '  ';
-    msg += icon+' '+m+' — ₹'+mT[m]+' ('+mMo[m]+' month'+(mMo[m]!==1?'s':'')+')
-';
+    var icon = medals[i] !== undefined ? medals[i] : '   ';
+    msg += icon+' '+m+' — ₹'+mT[m]+' ('+mMo[m]+' month'+(mMo[m]!==1?'s':'')+')' + nl;
   });
-  msg += '─────────────────
-';
-  msg += '💵 *Grand Total: ₹'+grand+'*
-';
+  msg += '─────────────────' + nl;
+  msg += '💵 *Grand Total: ₹'+grand+'*' + nl;
   msg += '📅 '+actMo.length+' month'+(actMo.length!==1?'s':'')+' tracked';
-  const url = 'https://wa.me/?text='+encodeURIComponent(msg);
-  window.open(url,'_blank');
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ── Create month ──────────────────────────────────────
