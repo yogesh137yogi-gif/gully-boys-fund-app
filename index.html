@@ -179,26 +179,103 @@ tr:last-child td{border-bottom:none;color:var(--gold);font-weight:700;}
 
 @keyframes fu{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .fi{animation:fu .3s ease;}
+
+/* ── Month pills ── */
+.pills-wrap{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none;}
+.pills-wrap::-webkit-scrollbar{display:none;}
+.pill{
+  flex-shrink:0;padding:6px 14px;border-radius:20px;
+  background:var(--card2);border:1px solid var(--border);
+  font-size:12px;font-weight:700;color:var(--muted);
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.pill.active{
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:#0a0c10;border-color:transparent;
+}
+.pill:active{transform:scale(.95);}
+
+/* ── Grid table ── */
+.grid-wrap{overflow-x:auto;padding:0 0 14px;scrollbar-width:none;}
+.grid-wrap::-webkit-scrollbar{display:none;}
+.grid-tbl{border-collapse:separate;border-spacing:3px;width:max-content;}
+.grid-tbl thead th{
+  font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);padding:6px 8px;text-align:center;
+  background:var(--card2);border-radius:6px;white-space:nowrap;
+}
+.grid-tbl thead th:first-child{text-align:left;background:transparent;min-width:90px;}
+.name-cell{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:800;color:var(--text);
+  padding:5px 4px;white-space:nowrap;
+}
+.mini-av{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:9px;color:#0a0c10;
+}
+.grid-tbl td{
+  text-align:center;padding:5px 4px;
+  border-radius:8px;font-size:10px;font-weight:800;
+  white-space:nowrap;min-width:40px;border:none;
+}
+.cell-paid{background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.2) !important;}
+.cell-unpaid{background:rgba(248,113,113,.07);color:var(--red);border:1px solid rgba(248,113,113,.12) !important;}
+.cell-empty{background:var(--card2);color:var(--muted);}
+.cell-total{background:rgba(245,200,66,.07);color:var(--gold);border:1px solid rgba(245,200,66,.15) !important;font-weight:800;}
+.row-total td{background:rgba(245,200,66,.08) !important;color:var(--gold) !important;border:1px solid rgba(245,200,66,.2) !important;border-radius:8px;}
+.grid-legend{display:flex;gap:12px;padding:8px 0 6px;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-weight:700;}
+.leg-dot{width:10px;height:10px;border-radius:3px;}
+
+/* ── Share button ── */
+.share-btn{
+  width:100%;padding:12px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#25d366,#128c7e);
+  color:white;font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:10px;-webkit-tap-highlight-color:transparent;
+  transition:all .15s;
+}
+.share-btn:active{transform:scale(.97);opacity:.9;}
+.share-monthly-btn{
+  width:100%;padding:11px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,#25d366,#128c7e);
+  color:white;font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:8px;-webkit-tap-highlight-color:transparent;
+  transition:all .15s;
+}
+.share-monthly-btn:active{transform:scale(.97);opacity:.9;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-title">💰 Gully Boys Fund</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div class="header-title">💰 Gully Boys Fund</div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <input class="inp inp-sm" id="selY" type="number" value="2026" onchange="onYearChange()" style="width:72px;flex:none;font-size:12px;padding:6px 8px;">
+    </div>
+  </div>
   <div class="tabs">
     <button class="tab active" id="tabM" onclick="switchTab('month')">Monthly</button>
     <button class="tab" id="tabS" onclick="switchTab('summary')">Summary</button>
   </div>
-  <div class="row" id="monthRow">
-    <select id="selM">
-      <option>January</option><option>February</option><option>March</option>
-      <option>April</option><option>May</option><option>June</option>
-      <option>July</option><option>August</option><option>September</option>
-      <option>October</option><option>November</option><option>December</option>
-    </select>
-    <input class="inp inp-sm" id="selY" type="number" value="2026">
-    <button class="btn btn-ghost" onclick="goView()">View</button>
-  </div>
+  <!-- Month pills — only shown in monthly tab -->
+  <div class="pills-wrap" id="pillsWrap"></div>
+  <!-- Hidden select kept for compatibility -->
+  <select id="selM" style="display:none;">
+    <option>January</option><option>February</option><option>March</option>
+    <option>April</option><option>May</option><option>June</option>
+    <option>July</option><option>August</option><option>September</option>
+    <option>October</option><option>November</option><option>December</option>
+  </select>
 </div>
 
 <div class="main">
@@ -335,9 +412,9 @@ function switchTab(t){
   tab = t;
   document.getElementById('tabM').classList.toggle('active', t==='month');
   document.getElementById('tabS').classList.toggle('active', t==='summary');
-  document.getElementById('monthRow').style.display    = t==='month'   ? 'flex'  : 'none';
   document.getElementById('cardsWrap').style.display   = t==='month'   ? 'block' : 'none';
   document.getElementById('summaryWrap').style.display = t==='summary' ? 'block' : 'none';
+  renderPills();
   render();
 }
 
@@ -351,6 +428,7 @@ function goView(){
 // ── Render dispatcher ─────────────────────────────────
 function render(){
   if (!started) return;
+  renderPills();
   if (tab==='month')   renderCards();
   else                 renderSummary();
 }
@@ -500,6 +578,15 @@ function renderCards(){
     card.appendChild(body);
     wrap.appendChild(card);
   });
+
+  // ── WhatsApp Share — Monthly (owner only) ──
+  if(isOwner && list.length > 0){
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'share-monthly-btn fi';
+    shareBtn.innerHTML = '📲 Share '+vMonth+' '+vYear+' Summary';
+    shareBtn.addEventListener('click', function(){ shareMonthly(list); });
+    wrap.appendChild(shareBtn);
+  }
 }
 
 // sAmt is now inline inside renderCards addEventListener
@@ -571,28 +658,216 @@ function renderSummary(){
     </div>`;
   });
 
-  h+=`<div class="slabel">Monthly Breakdown — ${vYear}</div>
-  <div class="twrap fi">
-    <div class="ttitle">Contribution Table</div>
-    <table>
-      <tr><th>Member</th>${actMo.map(m=>`<th>${m.substring(0,3)}</th>`).join('')}<th>Total</th></tr>`;
+  // Build grid table using DOM (no innerHTML for table to avoid mobile issues)
+  wrap.innerHTML = h;
 
-  MEMBERS.forEach(name=>{
-    let rT=0;
-    h+=`<tr><td>${name}</td>`;
-    actMo.forEach(mo=>{
-      const e=all.find(d=>d.name===name&&d.month===mo&&d.year===vYear&&d.paid);
-      const a=e?(e.amount||0):0; rT+=a;
-      h+=`<td class="${a>0?'tc':''}">${a>0?'₹'+a:'-'}</td>`;
+  // Legend
+  const legend = document.createElement('div');
+  legend.innerHTML = '<div class="slabel">'+vYear+' Breakdown — scroll →</div>'
+    + '<div class="grid-legend">'
+    + '<div class="leg"><div class="leg-dot" style="background:rgba(245,200,66,.3);border:1px solid rgba(245,200,66,.4);"></div>Paid</div>'
+    + '<div class="leg"><div class="leg-dot" style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.2);"></div>Unpaid</div>'
+    + '<div class="leg"><div class="leg-dot" style="background:var(--card2);border:1px solid var(--border);"></div>No data</div>'
+    + '</div>';
+  wrap.appendChild(legend);
+
+  // Grid wrap
+  const gridWrap = document.createElement('div');
+  gridWrap.className = 'grid-wrap fi';
+
+  const tbl = document.createElement('table');
+  tbl.className = 'grid-tbl';
+
+  // Header row
+  const thead = document.createElement('thead');
+  const hrow  = document.createElement('tr');
+  const th0   = document.createElement('th');
+  th0.style.textAlign = 'left';
+  th0.textContent = 'Member';
+  hrow.appendChild(th0);
+  actMo.forEach(function(mo){
+    const th = document.createElement('th');
+    th.textContent = mo.substring(0,3);
+    hrow.appendChild(th);
+  });
+  const thTot = document.createElement('th');
+  thTot.textContent = 'Total';
+  hrow.appendChild(thTot);
+  thead.appendChild(hrow);
+  tbl.appendChild(thead);
+
+  // Body rows
+  const tbody = document.createElement('tbody');
+  MEMBERS.forEach(function(name){
+    const row = document.createElement('tr');
+    let rT = 0;
+
+    // Name cell with avatar
+    const nameTd = document.createElement('td');
+    nameTd.style.padding = '3px 4px';
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'name-cell';
+    const av = document.createElement('div');
+    av.className = 'mini-av';
+    av.textContent = name.substring(0,2).toUpperCase();
+    const nm = document.createElement('span');
+    nm.textContent = name;
+    nameDiv.appendChild(av);
+    nameDiv.appendChild(nm);
+    nameTd.appendChild(nameDiv);
+    row.appendChild(nameTd);
+
+    // Month cells
+    actMo.forEach(function(mo){
+      const td  = document.createElement('td');
+      const ent = all.find(function(d){ return d.name===name && d.month===mo && d.year===vYear; });
+      if(!ent){
+        td.className = 'cell-empty';
+        td.textContent = '—';
+      } else if(ent.paid){
+        td.className = 'cell-paid';
+        td.textContent = ent.amount>0 ? '₹'+ent.amount : '✓';
+        rT += (ent.amount||0);
+      } else {
+        td.className = 'cell-unpaid';
+        td.textContent = '✗';
+      }
+      row.appendChild(td);
     });
-    h+=`<td>₹${rT}</td></tr>`;
+
+    // Total cell
+    const totTd = document.createElement('td');
+    totTd.className = 'cell-total';
+    totTd.textContent = '₹'+rT;
+    row.appendChild(totTd);
+    tbody.appendChild(row);
   });
 
-  h+=`<tr><td>Total</td>`;
-  actMo.forEach(m=>{h+=`<td>₹${moT[m]||0}</td>`;});
-  h+=`<td>₹${grand}</td></tr></table><div class="tfoot"></div></div>`;
+  // Total row
+  const totRow = document.createElement('tr');
+  totRow.className = 'row-total';
+  const totLabel = document.createElement('td');
+  totLabel.style.cssText = 'padding:5px 4px;font-size:10px;font-weight:800;color:var(--gold);background:rgba(245,200,66,.08);border-radius:8px;';
+  totLabel.textContent = 'Total';
+  totRow.appendChild(totLabel);
+  actMo.forEach(function(mo){
+    const td = document.createElement('td');
+    td.textContent = moT[mo]>0 ? '₹'+moT[mo] : '—';
+    totRow.appendChild(td);
+  });
+  const grandTd = document.createElement('td');
+  grandTd.textContent = '₹'+grand;
+  totRow.appendChild(grandTd);
+  tbody.appendChild(totRow);
 
-  wrap.innerHTML = h;
+  tbl.appendChild(tbody);
+  gridWrap.appendChild(tbl);
+  wrap.appendChild(gridWrap);
+
+  // ── WhatsApp Share — Yearly (owner only) ──
+  if(isOwner){
+    const shareYrBtn = document.createElement('button');
+    shareYrBtn.className = 'share-btn fi';
+    shareYrBtn.innerHTML = '📲 Share Yearly Summary';
+    shareYrBtn.addEventListener('click', function(){ shareYearly(grand, mT, mMo, actMo); });
+    wrap.appendChild(shareYrBtn);
+  }
+}
+
+// ── Render month pills ───────────────────────────────
+function renderPills(){
+  const wrap = document.getElementById('pillsWrap');
+  if(!wrap) return;
+  // Only show in monthly tab
+  wrap.style.display = tab==='month' ? 'flex' : 'none';
+  wrap.innerHTML = '';
+  // Get months that exist in Firestore for this year
+  const existing = MONTHS.filter(m => Object.values(docs).some(d=>d.month===m && d.year===vYear));
+  if(existing.length === 0){
+    // No months yet — show all 12 as options
+    MONTHS.forEach(function(m){
+      const pill = document.createElement('div');
+      pill.className = 'pill' + (m===vMonth?' active':'');
+      pill.textContent = m.substring(0,3);
+      pill.addEventListener('click', function(){ vMonth=m; renderPills(); renderCards(); });
+      wrap.appendChild(pill);
+    });
+    return;
+  }
+  existing.forEach(function(m){
+    const pill = document.createElement('div');
+    pill.className = 'pill' + (m===vMonth?' active':'');
+    pill.textContent = m.substring(0,3);
+    pill.addEventListener('click', function(){
+      vMonth = m;
+      document.getElementById('selM').value = m;
+      renderPills();
+      renderCards();
+    });
+    wrap.appendChild(pill);
+  });
+}
+
+// ── Year change ───────────────────────────────────────
+function onYearChange(){
+  vYear = Number(document.getElementById('selY').value);
+  renderPills();
+  render();
+}
+
+// ── GoView (kept for compatibility) ──────────────────
+function goView(){
+  vMonth = document.getElementById('selM').value;
+  vYear  = Number(document.getElementById('selY').value);
+  renderPills();
+  render();
+}
+
+// ── WhatsApp Share — Monthly ──────────────────────────
+function shareMonthly(list){
+  const paid   = list.filter(d=>d.paid);
+  const total  = paid.reduce(function(s,d){return s+(d.amount||0);},0);
+  let msg = '💰 *GULLY BOYS FUND*
+';
+  msg    += '📅 *'+vMonth+' '+vYear+'*
+';
+  msg    += '─────────────────
+';
+  list.forEach(function(d){
+    msg += (d.paid ? '✅ ' : '❌ ') + d.name + (d.paid ? ' — ₹'+d.amount : ' — Pending') + '
+';
+  });
+  msg += '─────────────────
+';
+  msg += '💵 *Total: ₹'+total+'*
+';
+  msg += '👥 '+paid.length+'/'+list.length+' Paid';
+  const url = 'https://wa.me/?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
+}
+
+// ── WhatsApp Share — Yearly ───────────────────────────
+function shareYearly(grand, mT, mMo, actMo){
+  const sorted = [...MEMBERS].sort(function(a,b){return mT[b]-mT[a];});
+  const medals = ['🏆','🥈','🥉'];
+  let msg = '💰 *GULLY BOYS FUND*
+';
+  msg    += '📅 *'+vYear+' — Year Summary*
+';
+  msg    += '─────────────────
+';
+  sorted.forEach(function(m, i){
+    const icon = medals[i] || '  ';
+    msg += icon+' '+m+' — ₹'+mT[m]+' ('+mMo[m]+' month'+(mMo[m]!==1?'s':'')+')
+';
+  });
+  msg += '─────────────────
+';
+  msg += '💵 *Grand Total: ₹'+grand+'*
+';
+  msg += '📅 '+actMo.length+' month'+(actMo.length!==1?'s':'')+' tracked';
+  const url = 'https://wa.me/?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
 }
 
 // ── Create month ──────────────────────────────────────
