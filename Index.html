@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gully Boys Fund</title>
+<meta name="description" content="Gully Boys monthly fund tracker">
+<meta name="theme-color" content="#0a0c10">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GB Fund">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 
 <!-- Firebase v9 compat — proven stable for browser use -->
@@ -180,6 +188,56 @@ tr:last-child td{border-bottom:none;color:var(--gold);font-weight:700;}
 @keyframes fu{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .fi{animation:fu .3s ease;}
 
+/* ── Fund tab ── */
+.balance-card{
+  background:linear-gradient(135deg,#1a1a0f,#0f1208);
+  border:1px solid rgba(245,200,66,.25);
+  border-radius:var(--r);padding:20px;margin-bottom:10px;
+}
+.balance-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.balance-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.balance-val{font-family:'Bebas Neue',sans-serif;font-size:22px;}
+.balance-val.income{color:var(--green);}
+.balance-val.expense{color:var(--red);}
+.balance-val.net{color:var(--gold);font-size:32px;}
+.balance-divider{height:1px;background:rgba(245,200,66,.15);margin:10px 0;}
+
+.add-form{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;margin-bottom:10px;
+}
+.add-form-title{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);margin-bottom:12px;letter-spacing:.5px;}
+.form-row{display:flex;gap:8px;margin-bottom:8px;}
+.finp{
+  background:var(--card2);border:1px solid var(--border);color:var(--text);
+  padding:10px 12px;border-radius:10px;font-family:'Nunito',sans-serif;
+  font-size:13px;outline:none;flex:1;min-width:0;
+}
+.finp:focus{border-color:var(--gold);}
+.finp-amt{max-width:100px;flex:0 0 100px;}
+
+.entry-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;margin-bottom:6px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.entry-left{flex:1;min-width:0;}
+.entry-title{font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.entry-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.entry-amt{font-family:'Bebas Neue',sans-serif;font-size:18px;flex-shrink:0;}
+.entry-amt.exp{color:var(--red);}
+.entry-amt.spl{color:var(--green);}
+.del-btn{
+  background:rgba(248,113,113,.1);border:none;color:var(--red);
+  width:28px;height:28px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;-webkit-tap-highlight-color:transparent;
+}
+.del-btn:active{transform:scale(.9);}
+.empty-fund{text-align:center;padding:30px 20px;color:var(--muted);}
+.empty-fund-i{font-size:32px;margin-bottom:8px;}
+.empty-fund-t{font-size:13px;font-weight:700;color:var(--text);}
+
 /* ── Month pills ── */
 .pills-wrap{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none;}
 .pills-wrap::-webkit-scrollbar{display:none;}
@@ -266,6 +324,7 @@ tr:last-child td{border-bottom:none;color:var(--gold);font-weight:700;}
   <div class="tabs">
     <button class="tab active" id="tabM" onclick="switchTab('month')">Monthly</button>
     <button class="tab" id="tabS" onclick="switchTab('summary')">Summary</button>
+    <button class="tab" id="tabF" onclick="switchTab('fund')">Fund</button>
   </div>
   <!-- Month pills — only shown in monthly tab -->
   <div class="pills-wrap" id="pillsWrap"></div>
@@ -311,6 +370,7 @@ tr:last-child td{border-bottom:none;color:var(--gold);font-weight:700;}
 
   <div id="cardsWrap"></div>
   <div id="summaryWrap" style="display:none;"></div>
+  <div id="fundWrap" style="display:none;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -336,6 +396,8 @@ const DEF_AMT = 200;
 
 // ── State ─────────────────────────────────────────────
 let docs      = {};   // id -> doc
+let expenses  = {};   // id -> expense doc
+let specials  = {};   // id -> special contribution doc
 let isOwner   = false;
 let started   = false;
 let tab       = 'month';
@@ -379,32 +441,39 @@ function guestMode(){
 function startListen(){
   if (unsub) return;
   started = true;
-  unsub = db.collection('fund').onSnapshot(snap => {
-    const wasEmpty   = Object.keys(docs).length === 0;
-    const existingIds = new Set(Object.keys(docs));
-    let   hasNew     = false;
 
-    snap.forEach(d => {
+  // Fund collection listener
+  unsub = db.collection('fund').onSnapshot(function(snap){
+    var wasEmpty    = Object.keys(docs).length === 0;
+    var existingIds = new Set(Object.keys(docs));
+    var hasNew      = false;
+    snap.forEach(function(d){
       if(!existingIds.has(d.id)) hasNew = true;
-      const incoming = {id:d.id, ...d.data()};
-      // If owner is actively typing in this input, don't overwrite their value
+      var incoming = Object.assign({id:d.id}, d.data());
       if(isOwner && docs[d.id]){
-        const inp = document.getElementById('ai_'+d.id);
+        var inp = document.getElementById('ai_'+d.id);
         if(inp && document.activeElement === inp){
           incoming.amount = docs[d.id].amount;
         }
       }
       docs[d.id] = incoming;
     });
+    if(wasEmpty || hasNew){ render(); } else { updateStats(); }
+  }, function(err){ toast('❌ '+err.message,'err'); });
 
-    if(wasEmpty || hasNew){
-      // First load OR new month created — full render
-      render();
-    } else {
-      // Existing data updated — just refresh stats quietly
-      updateStats();
-    }
-  }, err => toast('❌ '+err.message,'err'));
+  // Expenses listener
+  db.collection('expenses').onSnapshot(function(snap){
+    expenses = {};
+    snap.forEach(function(d){ expenses[d.id] = Object.assign({id:d.id}, d.data()); });
+    if(tab==='fund') renderFund();
+  }, function(err){ console.log('expenses err',err); });
+
+  // Special contributions listener
+  db.collection('special').onSnapshot(function(snap){
+    specials = {};
+    snap.forEach(function(d){ specials[d.id] = Object.assign({id:d.id}, d.data()); });
+    if(tab==='fund') renderFund();
+  }, function(err){ console.log('special err',err); });
 }
 
 // ── Tab switch ────────────────────────────────────────
@@ -412,8 +481,10 @@ function switchTab(t){
   tab = t;
   document.getElementById('tabM').classList.toggle('active', t==='month');
   document.getElementById('tabS').classList.toggle('active', t==='summary');
+  document.getElementById('tabF').classList.toggle('active', t==='fund');
   document.getElementById('cardsWrap').style.display   = t==='month'   ? 'block' : 'none';
   document.getElementById('summaryWrap').style.display = t==='summary' ? 'block' : 'none';
+  document.getElementById('fundWrap').style.display    = t==='fund'    ? 'block' : 'none';
   renderPills();
   render();
 }
@@ -429,8 +500,9 @@ function goView(){
 function render(){
   if (!started) return;
   renderPills();
-  if (tab==='month')   renderCards();
-  else                 renderSummary();
+  if (tab==='month')        renderCards();
+  else if (tab==='summary') renderSummary();
+  else if (tab==='fund')    renderFund();
 }
 
 // ── Render cards ──────────────────────────────────────
@@ -803,6 +875,7 @@ function renderPills(){
 // ── Year change ───────────────────────────────────────
 function onYearChange(){
   vYear = Number(document.getElementById('selY').value);
+  document.getElementById('cY').value = vYear;
   renderPills();
   render();
 }
@@ -848,6 +921,209 @@ function shareYearly(grand, mT, mMo, actMo){
   msg += '💵 *Grand Total: ₹'+grand+'*' + nl;
   msg += '📅 '+actMo.length+' month'+(actMo.length!==1?'s':'')+' tracked';
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ── Render Fund tab ──────────────────────────────────
+function renderFund(){
+  var wrap = document.getElementById('fundWrap');
+  wrap.innerHTML = '';
+
+  // Calculate totals
+  var allDocs    = Object.values(docs);
+  var totalIn    = allDocs.filter(function(d){return d.paid && d.year===vYear;})
+                          .reduce(function(s,d){return s+(d.amount||0);},0);
+  var totalExp   = Object.values(expenses).filter(function(e){return e.year===vYear;})
+                         .reduce(function(s,e){return s+(e.amount||0);},0);
+  var balance    = totalIn - totalExp;
+
+  // ── Balance card ──
+  var bc = document.createElement('div');
+  bc.className = 'balance-card fi';
+  bc.innerHTML =
+    '<div class="balance-row"><span class="balance-label">💰 Total Collected ('+vYear+')</span><span class="balance-val income">₹'+totalIn+'</span></div>'
+  + '<div class="balance-row"><span class="balance-label">💸 Total Expenses ('+vYear+')</span><span class="balance-val expense">₹'+totalExp+'</span></div>'
+  + '<div class="balance-divider"></div>'
+  + '<div class="balance-row"><span class="balance-label">✅ Fund Balance</span><span class="balance-val net">₹'+balance+'</span></div>';
+  wrap.appendChild(bc);
+
+  // ── Add Expense form (owner only) ──
+  if(isOwner){
+    var expForm = document.createElement('div');
+    expForm.className = 'add-form fi';
+    expForm.innerHTML = '<div class="add-form-title">💸 Add Expense</div>'
+      + '<div class="form-row">'
+      + '<input class="finp" id="expDesc" placeholder="Description (e.g. Dinner party)" maxlength="50">'
+      + '</div>'
+      + '<div class="form-row">'
+      + '<input class="finp finp-amt" id="expAmt" type="number" inputmode="numeric" placeholder="Amount">'
+      + '<input class="finp" id="expDate" type="date">'
+      + '<button class="btn btn-gold" id="expBtn" onclick="addExpense()">Add</button>'
+      + '</div>';
+    // Set today's date as default
+    var today = new Date().toISOString().split('T')[0];
+    wrap.appendChild(expForm);
+    document.getElementById('expDate').value = today;
+
+    // ── Add Special Contribution form ──
+    var splForm = document.createElement('div');
+    splForm.className = 'add-form fi';
+    splForm.innerHTML = '<div class="add-form-title">🎉 Add Special Contribution</div>'
+      + '<div class="form-row">'
+      + '<select class="finp" id="splName">'
+      + MEMBERS.map(function(m){return '<option>'+m+'</option>';}).join('')
+      + '</select>'
+      + '</div>'
+      + '<div class="form-row">'
+      + '<input class="finp" id="splOcc" placeholder="Occasion (e.g. Diwali 2025)" maxlength="50">'
+      + '</div>'
+      + '<div class="form-row">'
+      + '<input class="finp finp-amt" id="splAmt" type="number" inputmode="numeric" placeholder="Amount">'
+      + '<input class="finp" id="splDate" type="date">'
+      + '<button class="btn btn-gold" id="splBtn" onclick="addSpecial()">Add</button>'
+      + '</div>';
+    wrap.appendChild(splForm);
+    document.getElementById('splDate').value = today;
+  }
+
+  // ── Expenses list ──
+  var expList = Object.values(expenses)
+    .filter(function(e){return e.year===vYear;})
+    .sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+
+  var expLabel = document.createElement('div');
+  expLabel.className = 'slabel';
+  expLabel.textContent = 'Expenses — '+vYear;
+  wrap.appendChild(expLabel);
+
+  if(expList.length === 0){
+    var emp = document.createElement('div');
+    emp.className = 'empty-fund';
+    emp.innerHTML = '<div class="empty-fund-i">💸</div><div class="empty-fund-t">No expenses recorded</div>';
+    wrap.appendChild(emp);
+  } else {
+    expList.forEach(function(e){
+      var card = document.createElement('div');
+      card.className = 'entry-card fi';
+      card.innerHTML = '<div class="entry-left">'
+        + '<div class="entry-title">'+e.description+'</div>'
+        + '<div class="entry-sub">'+e.date+'</div>'
+        + '</div>'
+        + '<div class="entry-amt exp">₹'+e.amount+'</div>';
+      if(isOwner){
+        var del = document.createElement('button');
+        del.className = 'del-btn';
+        del.innerHTML = '✕';
+        del.setAttribute('data-id', e.id);
+        del.setAttribute('data-col', 'expenses');
+        del.addEventListener('click', function(){
+          deleteEntry(this.getAttribute('data-id'), this.getAttribute('data-col'));
+        });
+        card.appendChild(del);
+      }
+      wrap.appendChild(card);
+    });
+  }
+
+  // ── Special contributions list ──
+  var splList = Object.values(specials)
+    .filter(function(s){return s.year===vYear;})
+    .sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+
+  var splLabel = document.createElement('div');
+  splLabel.className = 'slabel';
+  splLabel.textContent = '🎉 Special Contributions — '+vYear;
+  wrap.appendChild(splLabel);
+
+  if(splList.length === 0){
+    var emp2 = document.createElement('div');
+    emp2.className = 'empty-fund';
+    emp2.innerHTML = '<div class="empty-fund-i">🎉</div><div class="empty-fund-t">No special contributions yet</div>';
+    wrap.appendChild(emp2);
+  } else {
+    splList.forEach(function(s){
+      var card = document.createElement('div');
+      card.className = 'entry-card fi';
+      card.innerHTML = '<div class="entry-left">'
+        + '<div class="entry-title">'+s.name+' — '+s.occasion+'</div>'
+        + '<div class="entry-sub">'+s.date+'</div>'
+        + '</div>'
+        + '<div class="entry-amt spl">₹'+s.amount+'</div>';
+      if(isOwner){
+        var del = document.createElement('button');
+        del.className = 'del-btn';
+        del.innerHTML = '✕';
+        del.setAttribute('data-id', s.id);
+        del.setAttribute('data-col', 'special');
+        del.addEventListener('click', function(){
+          deleteEntry(this.getAttribute('data-id'), this.getAttribute('data-col'));
+        });
+        card.appendChild(del);
+      }
+      wrap.appendChild(card);
+    });
+  }
+}
+
+// ── Add Expense ───────────────────────────────────────
+function addExpense(){
+  var desc = document.getElementById('expDesc').value.trim();
+  var amt  = Number(document.getElementById('expAmt').value);
+  var date = document.getElementById('expDate').value;
+  if(!desc){ toast('⚠️ Enter description','err'); return; }
+  if(!amt || amt <= 0){ toast('⚠️ Enter valid amount','err'); return; }
+  if(!date){ toast('⚠️ Select date','err'); return; }
+  var btn = document.getElementById('expBtn');
+  btn.textContent = 'Adding...'; btn.disabled = true;
+  db.collection('expenses').add({
+    description: desc,
+    amount: amt,
+    date: date,
+    year: Number(date.split('-')[0])
+  }).then(function(){
+    document.getElementById('expDesc').value = '';
+    document.getElementById('expAmt').value  = '';
+    toast('✓ Expense added','ok');
+    btn.textContent = 'Add'; btn.disabled = false;
+  }).catch(function(e){
+    toast('❌ '+e.message,'err');
+    btn.textContent = 'Add'; btn.disabled = false;
+  });
+}
+
+// ── Add Special Contribution ──────────────────────────
+function addSpecial(){
+  var name = document.getElementById('splName').value;
+  var occ  = document.getElementById('splOcc').value.trim();
+  var amt  = Number(document.getElementById('splAmt').value);
+  var date = document.getElementById('splDate').value;
+  if(!occ){ toast('⚠️ Enter occasion','err'); return; }
+  if(!amt || amt <= 0){ toast('⚠️ Enter valid amount','err'); return; }
+  if(!date){ toast('⚠️ Select date','err'); return; }
+  var btn = document.getElementById('splBtn');
+  btn.textContent = 'Adding...'; btn.disabled = true;
+  db.collection('special').add({
+    name: name,
+    occasion: occ,
+    amount: amt,
+    date: date,
+    year: Number(date.split('-')[0])
+  }).then(function(){
+    document.getElementById('splOcc').value = '';
+    document.getElementById('splAmt').value = '';
+    toast('✓ Special contribution added','ok');
+    btn.textContent = 'Add'; btn.disabled = false;
+  }).catch(function(e){
+    toast('❌ '+e.message,'err');
+    btn.textContent = 'Add'; btn.disabled = false;
+  });
+}
+
+// ── Delete entry ──────────────────────────────────────
+function deleteEntry(id, col){
+  if(!confirm('Delete this entry?')) return;
+  db.collection(col).doc(id).delete()
+    .then(function(){ toast('✓ Deleted','ok'); })
+    .catch(function(e){ toast('❌ '+e.message,'err'); });
 }
 
 // ── Create month ──────────────────────────────────────
@@ -926,6 +1202,15 @@ function toast(msg,type){
   el.className='toast show '+(type==='ok'?'tok':'terr');
   clearTimeout(tT);
   tT=setTimeout(()=>{el.className='toast';},2500);
+}
+
+// ── PWA Service Worker ────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(){ console.log('SW registered'); })
+      .catch(function(e){ console.log('SW failed:', e); });
+  });
 }
 </script>
 </body>
