@@ -1,46 +1,71 @@
-# Gully Boys Fund App
+# 💰 Gully Boys Fund App
 
-A responsive web application built to simplify the management of monthly group fund contributions.
+A responsive web application built to simplify monthly group fund management.
 
-## Overview
+## 📌 Overview
 
-The Gully Boys Fund App helps users manage monthly contributions digitally instead of maintaining manual records.
+The Gully Boys Fund App helps groups digitally manage monthly fund contributions without maintaining manual records or spreadsheets.
 
-The application provides a simple interface to track payments, monitor pending contributions, and maintain accurate fund records.
+It allows members to track contributions, monitor pending payments, and maintain accurate records from anywhere.
 
-Users can simply install this application in their mobiles.
+---
 
-## Features
+## ✨ Features
 
 - Monthly contribution tracking
-- Real-time data storage using Firebase
-- Responsive design for mobile and desktop
-- Simple and user-friendly interface
-- Secure cloud deployment using Vercel
-- Completely free of cost
+- Real-time data updates
+- Responsive mobile-friendly interface
+- Fast and lightweight
+- Firebase cloud database
+- Free deployment using Vercel
 
-## Tech Stack
+---
 
-- HTML
-- CSS
+## 🛠️ Tech Stack
+
+- HTML5
+- CSS3
 - JavaScript
 - Firebase Firestore
 - Vercel
-- Chat Gpt and Claude (no subscription)
+- Chat GPT & Claude
 
-## Live Demo
+---
+
+## 📸 Screenshots
+
+### Monthly View
+
+![Monthly View](screenshots/Monthly%2view.jpeg)
+
+### Fund Expenses
+
+![Fund Expenses](screenshots/Fund%20expenses.jpeg)
+
+### Summary Page
+
+![Summary Page](screenshots/Summary%20page.jpeg)
+
+---
+
+## 🚀 Live Demo
 
 https://gully-boys-fund-app.vercel.app/
 
-## Future Enhancements
+---
 
-- User authentication
-- Admin dashboard
-- Contribution analytics
-- PDF receipt generation
-- Email notifications
+## 🔮 Future Enhancements
 
-## Author
+- User Login
+- Admin Dashboard
+- Payment History
+- Analytics Dashboard
+- Export Reports
+- Notifications
+
+---
+
+## 👨‍💻 Author
 
 *Yogesh Baki*
 
