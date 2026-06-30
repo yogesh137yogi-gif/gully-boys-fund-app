@@ -36,7 +36,7 @@ It allows members to track contributions, monitor pending payments, and maintain
 
 ### Monthly View
 
-![Monthly View](screenshots/Monthly%2view.jpeg)
+![Monthly View](screenshots/Monthly%20view.jpeg)
 
 ### Fund Expenses
 
